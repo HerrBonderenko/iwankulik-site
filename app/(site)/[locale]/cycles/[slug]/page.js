@@ -12,13 +12,7 @@ import JsonLd from "@/components/JsonLd";
 // сталий (адмінка редагує вміст, але не список), тож набір маршрутів
 // відомий на збірці й не залежить від того, що зараз лежить у блобі.
 export function generateStaticParams() {
-  const params = locales.flatMap((locale) => staticCycles.map((c) => ({ locale, slug: c.slug })));
-  // ТИМЧАСОВО: діагностика 404 на проді. Прибрати після з'ясування.
-  console.log(
-    `[build-diag] cycles/[slug]: locales=${locales.length} cycles=${staticCycles.length} ` +
-      `→ ${params.length} шляхів; приклад=${params[0] ? `${params[0].locale}/${params[0].slug}` : "НЕМАЄ"}`
-  );
-  return params;
+  return locales.flatMap((locale) => staticCycles.map((c) => ({ locale, slug: c.slug })));
 }
 
 async function findCycle(slug) {
@@ -53,13 +47,14 @@ export async function generateMetadata({ params }) {
   });
 }
 
-// Набір слагів відомий на збірці, тож усе інше — не «сторінка, яку
-// треба спробувати відрендерити», а адреса, якої в застосунку нема.
-// dynamicParams: false віддає її маршрутизатору, і 404 малює наш
-// app/not-found.js із шапкою й футером, а не вбудована заглушка
-// (власної межі not-found у групи (site) бути не може — два
-// кореневі макети, див. коментар в app/not-found.js).
-export const dynamicParams = false;
+// dynamicParams тут навмисно НЕ вимкнено, хоч набір слагів і відомий
+// на збірці. З dynamicParams: false Netlify віддавав 404 на всі
+// вкладені динамічні маршрути: пререндерену сторінку рантайм не
+// знаходив, а зібрати її на льоту флаг забороняв. Зі значенням за
+// замовчуванням (true) невідомий слаг доходить до notFound() у самій
+// сторінці — ціною того, що 404 малює вбудована заглушка Next, а не
+// наш app/not-found.js (власної межі not-found у групи (site) бути не
+// може — два кореневі макети, див. коментар в app/not-found.js).
 
 export const revalidate = 60;
 

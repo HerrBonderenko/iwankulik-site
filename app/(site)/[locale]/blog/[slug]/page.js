@@ -39,11 +39,6 @@ export function generateStaticParams() {
       params.push({ locale, slug });
     }
   }
-  // ТИМЧАСОВО: діагностика 404 на проді. Прибрати після з'ясування.
-  console.log(
-    `[build-diag] blog/[slug]: cwd=${process.cwd()} locales=${locales.length} ` +
-      `→ ${params.length} шляхів; приклад=${params[0] ? `${params[0].locale}/${params[0].slug}` : "НЕМАЄ"}`
-  );
   return params;
 }
 
@@ -87,13 +82,9 @@ export async function generateMetadata({ params }) {
   });
 }
 
-// Набір слагів відомий на збірці, тож усе інше — не «сторінка, яку
-// треба спробувати відрендерити», а адреса, якої в застосунку нема.
-// dynamicParams: false віддає її маршрутизатору, і 404 малює наш
-// app/not-found.js із шапкою й футером, а не вбудована заглушка
-// (власної межі not-found у групи (site) бути не може — два
-// кореневі макети, див. коментар в app/not-found.js).
-export const dynamicParams = false;
+// dynamicParams тут навмисно НЕ вимкнено — те саме, що й у
+// cycles/[slug]: з dynamicParams: false Netlify віддавав 404 на всі
+// вкладені динамічні маршрути. Наслідок для 404 описано там само.
 
 export const revalidate = 60;
 

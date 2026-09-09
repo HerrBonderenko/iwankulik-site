@@ -12,11 +12,3 @@
 # затягувати його в бандл функції, а покласти як є з node_modules.
 [functions]
   external_node_modules = ["sharp"]
-
-# Netlify-піддомен не повинен індексуватися й дублювати контент —
-# редиректимо його на основний домен.
-[[redirects]]
-  from = "https://legendary-sorbet-d64d2a.netlify.app/*"
-  to = "https://iwankulik.com/:splat"
-  status = 301
-  force = true
