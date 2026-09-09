@@ -61,13 +61,9 @@ export async function generateMetadata({ params }) {
     // Підтвердження прав у Google Search Console. Стоїть тут, у макеті
     // локалі, а не в buildMetadata: метадані макета успадковують усі
     // вкладені сторінки, тож тег є скрізь під /{locale} і його не треба
-    // повторювати в кожному роуті. Масив — два токени (дві властивості
-    // в Search Console), Next віддає їх двома окремими <meta>.
+    // повторювати в кожному роуті.
     verification: {
-      google: [
-        "YR2TlRdCig99_RtObyJcYCE5o4OUr2cieu3riutlp8g",
-        "tvgSMdfWRTGmIZYm9PYx0zFLAU-xtIPNU6X2gZauF9Q",
-      ],
+      google: "tvgSMdfWRTGmIZYm9PYx0zFLAU-xtIPNU6X2gZauF9Q",
     },
   };
 }
