@@ -439,6 +439,7 @@ function BlogTab({ data, setData, persist, uploadPhoto, busy }) {
   const [posts, setPosts] = useState(null);
   const [uploadingSlug, setUploadingSlug] = useState(null);
   const covers = data.blogCovers || {};
+  const alts = data.blogCoverAlts || {};
 
   useEffect(() => {
     fetch("/api/admin/blog-posts").then((r) => r.json()).then(setPosts);
@@ -459,6 +460,18 @@ function BlogTab({ data, setData, persist, uploadPhoto, busy }) {
     const next = { ...covers };
     delete next[slug];
     setData({ ...data, blogCovers: next });
+  }
+
+  // Порожнє поле = опису нема: чистимо ключ, щоб у сховищі не збиралися
+  // порожні рядки й сторінка спокійно йшла до запасних варіантів.
+  function onAlt(slug, locale, value) {
+    const forSlug = { ...(alts[slug] || {}) };
+    if (value.trim()) forSlug[locale] = value;
+    else delete forSlug[locale];
+    const next = { ...alts };
+    if (Object.keys(forSlug).length) next[slug] = forSlug;
+    else delete next[slug];
+    setData({ ...data, blogCoverAlts: next });
   }
 
   if (!posts) return <p className="muted">Завантаження…</p>;
@@ -492,6 +505,20 @@ function BlogTab({ data, setData, persist, uploadPhoto, busy }) {
                     скинути до дефолту
                   </button>
                 )}
+              </div>
+              <div className="blog-admin-alt">
+                <label>
+                  alt-опис обкладинки (UK)
+                  <input
+                    value={alts[post.slug]?.uk || ""}
+                    onChange={(e) => onAlt(post.slug, "uk", e.target.value)}
+                  />
+                </label>
+                {langField(alts[post.slug] || {}, (l, v) => onAlt(post.slug, l, v), "alt-опис")}
+                <p className="small muted">
+                  Опис того, що на зображенні, не назва статті. Для пошуку й доступності.
+                  {!hasOverride && " Для вбудованої обкладинки опис уже є — заповнюйте, лише якщо треба інший."}
+                </p>
               </div>
             </div>
           </div>

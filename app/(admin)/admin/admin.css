@@ -191,6 +191,9 @@
 .blog-admin-thumb { position: relative; overflow: hidden; width: 140px; aspect-ratio: 1200/630; border-radius: 6px; background: var(--a-bg); flex: none; }
 .blog-admin-info { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
 .blog-admin-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+/* Alt-опис обкладинки: відділяємо від дій, щоб рядок статті не злипався. */
+.blog-admin-alt { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 8px; }
+.blog-admin-alt > p { margin: 0; }
 
 /* ── Сповіщення ── */
 .admin-msg {

@@ -208,7 +208,7 @@ async function ArticleView({ locale, t, slug, post }) {
                 заголовком і на весь її стовпчик. */}
             <Image
               src={post.cover}
-              alt={coverAlt(post.cover, locale) ?? post.title}
+              alt={post.coverAlt ?? coverAlt(post.cover, locale) ?? post.title}
               fill
               priority
               sizes="(max-width: 800px) 100vw, 760px"

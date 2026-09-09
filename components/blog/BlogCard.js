@@ -12,7 +12,7 @@ export default function BlogCard({ locale, t, post }) {
               див. lib/coverAlt.js. Заголовок і так поруч, у підписі картки. */}
           <Image
             src={post.cover}
-            alt={coverAlt(post.cover, locale) ?? post.title}
+            alt={post.coverAlt ?? coverAlt(post.cover, locale) ?? post.title}
             fill
             sizes="(max-width: 920px) 100vw, 33vw"
           />
