@@ -17,6 +17,7 @@ import {
   renderPost,
 } from "@/lib/blog";
 import { getAuthor } from "@/lib/authors";
+import { coverAlt } from "@/lib/coverAlt";
 import JsonLd from "@/components/JsonLd";
 import BlogCard from "@/components/blog/BlogCard";
 import BlogMeta from "@/components/blog/BlogMeta";
@@ -205,7 +206,13 @@ async function ArticleView({ locale, t, slug, post }) {
           <div className="object-hero" style={{ marginTop: 24 }}>
             {/* Обкладинка — LCP сторінки статті: стоїть одразу під
                 заголовком і на весь її стовпчик. */}
-            <Image src={post.cover} alt={post.title} fill priority sizes="(max-width: 800px) 100vw, 760px" />
+            <Image
+              src={post.cover}
+              alt={coverAlt(post.cover, locale) ?? post.title}
+              fill
+              priority
+              sizes="(max-width: 800px) 100vw, 760px"
+            />
           </div>
         )}
         <BlogToC t={t} headings={rendered.headings} />
