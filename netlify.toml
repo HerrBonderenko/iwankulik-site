@@ -1,0 +1,22 @@
+# Секцію [build] тут навмисно не визначаємо — команда збірки й публічна
+# директорія лишаються такими, як налаштовано в Netlify UI, цей файл їх
+# не перевизначає.
+#
+# Заголовки безпеки (Strict-Transport-Security, X-Frame-Options,
+# Content-Security-Policy-Report-Only тощо) сюди не виносимо: сторінки
+# йдуть через Next.js Server Handler, а не як статика, тож [[headers]]
+# їх не зачіпає. Заголовки виставляє сам Next.js — див. headers() у
+# next.config.mjs.
+
+# sharp має нативний бінарник (не чистий JS) — явно просимо Netlify не
+# затягувати його в бандл функції, а покласти як є з node_modules.
+[functions]
+  external_node_modules = ["sharp"]
+
+# Netlify-піддомен не повинен індексуватися й дублювати контент —
+# редиректимо його на основний домен.
+[[redirects]]
+  from = "https://legendary-sorbet-d64d2a.netlify.app/*"
+  to = "https://iwankulik.com/:splat"
+  status = 301
+  force = true

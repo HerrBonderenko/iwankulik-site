@@ -1,0 +1,281 @@
+/* ── Адмінка ─────────────────────────────────────────────
+   Своя палітра, не залежна від теми сайту: художник
+   заходить сюди з телефона просто з майстерні,
+   тож фон — рівний вапняний, акцент — ультрамарин,
+   класичний пігмент, один на весь інтерфейс.          */
+.admin, .admin-login {
+  --a-bg: #f7f6f3;
+  --a-panel: #ffffff;
+  --a-ink: #16161a;
+  --a-muted: #6e6e76;
+  --a-line: #e3e1db;
+  --a-accent: #2e3f8f;
+  --a-accent-soft: #eceef7;
+  --a-danger: #9b2c2c;
+  --a-radius: 10px;
+  --a-shadow: 0 1px 2px rgba(22, 22, 26, 0.05), 0 8px 24px -16px rgba(22, 22, 26, 0.25);
+  color: var(--a-ink);
+  font-feature-settings: "tnum" 1;
+}
+
+/* ── Вхід ── */
+.admin-login {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: var(--a-bg);
+}
+.admin-login .form {
+  width: 100%; max-width: 360px; background: var(--a-panel);
+  border: 1px solid var(--a-line); border-radius: var(--a-radius);
+  padding: 32px 28px; box-shadow: var(--a-shadow); gap: 16px;
+}
+.admin-login h1 { letter-spacing: -0.01em; }
+.admin-login label { gap: 6px; color: var(--a-muted); }
+.admin-login input { border-color: var(--a-line); border-radius: 6px; padding: 12px 14px; font-size: 16px; }
+.admin-login input:focus { outline: 2px solid var(--a-accent); outline-offset: -1px; }
+.admin-login button[type="submit"] {
+  background: var(--a-ink); color: #fff; border: none; border-radius: 6px; padding: 14px;
+}
+.admin-login button[type="submit"]:hover { background: var(--a-accent); }
+
+/* ── Каркас ── */
+.admin {
+  min-height: 100vh; background: var(--a-bg);
+  max-width: 900px; margin: 0 auto; padding: 28px 20px 120px;
+}
+.admin-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 16px; margin-bottom: 24px;
+}
+.admin-top h1 { letter-spacing: -0.01em; }
+.admin-top .link:hover { color: var(--a-accent); }
+
+/* ── Вкладки ──
+   Переносяться на другий рядок, а не ховаються за краєм:
+   вкладку, якої не видно, ніхто не шукатиме свайпом. */
+.admin-tabs {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 20px; padding: 4px;
+  background: var(--a-panel); border: 1px solid var(--a-line);
+  border-radius: var(--a-radius);
+}
+.admin-tabs button {
+  flex: none; padding: 10px 14px; border-radius: 6px; font-size: 14px;
+  color: var(--a-muted); white-space: nowrap; transition: background 0.15s, color 0.15s;
+}
+.admin-tabs button:hover { color: var(--a-ink); }
+.admin-tabs button.active { background: var(--a-accent-soft); color: var(--a-accent); font-weight: 500; }
+
+/* ── Довідка й підказки ── */
+.admin-help {
+  background: var(--a-panel); border: 1px solid var(--a-line);
+  border-radius: var(--a-radius); padding: 14px 18px; margin-bottom: 14px; font-size: 14px;
+}
+.admin-help summary { cursor: pointer; color: var(--a-accent); list-style: none; }
+.admin-help summary::-webkit-details-marker { display: none; }
+.admin-help summary::before { content: "?"; display: inline-grid; place-items: center;
+  width: 18px; height: 18px; margin-right: 8px; border-radius: 50%;
+  background: var(--a-accent-soft); color: var(--a-accent); font-size: 12px; }
+.admin-help ol { margin: 12px 0 6px; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+.admin-help p { color: var(--a-muted); font-size: 13px; margin-top: 8px; }
+.admin-note { font-size: 13px; color: var(--a-muted); line-height: 1.5; }
+
+/* ── Рядок роботи ──
+   Номер зліва — це позиція на сайті, а не декор:
+   стрілки змінюють саме його.                        */
+.admin-row {
+  display: grid; grid-template-columns: 28px 96px 1fr auto;
+  gap: 14px; align-items: center;
+  background: var(--a-panel); border: 1px solid var(--a-line);
+  border-radius: var(--a-radius); padding: 10px 14px; margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+.admin-row:hover { border-color: #cfccc4; }
+.admin-pos { font-size: 15px; color: var(--a-muted); text-align: center; font-variant-numeric: tabular-nums; }
+.admin-thumb { position: relative; overflow: hidden; width: 96px; height: 68px; border-radius: 6px; background: var(--a-bg); }
+.admin-row-title { min-width: 0; font-size: 15px; }
+.admin-row-title .small { display: block; color: var(--a-muted); margin-top: 2px; }
+/* Постійний номер роботи (К-014). Моноширинний і трохи розріджений —
+   щоб його було легко продиктувати телефоном, не переплутавши цифри. */
+.admin-code {
+  display: inline-block; margin-right: 8px; padding: 2px 7px;
+  border: 1px solid var(--a-line); border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; letter-spacing: 0.06em; color: var(--a-muted);
+  background: var(--a-bg); vertical-align: 2px; white-space: nowrap;
+  user-select: all;
+}
+.admin-actions { display: flex; gap: 6px; }
+.admin-actions button {
+  height: 36px; min-width: 36px; padding: 0 8px; border: 1px solid var(--a-line);
+  background: var(--a-panel); border-radius: 6px; font-size: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.admin-actions button:hover { border-color: var(--a-accent); color: var(--a-accent); }
+.admin-actions button:disabled { opacity: 0.25; cursor: default; }
+.admin-actions button:disabled:hover { border-color: var(--a-line); color: inherit; }
+.act-edit { padding: 0 12px !important; font-size: 13px !important; }
+.act-del:hover { border-color: var(--a-danger) !important; color: var(--a-danger) !important; }
+
+/* ── Кнопка «додати» і збереження ── */
+.admin-add { margin: 16px 0; }
+.admin-add button {
+  padding: 12px 20px; border: 1px dashed var(--a-line); border-radius: var(--a-radius);
+  color: var(--a-accent); font-size: 15px; background: var(--a-panel);
+  transition: border-color 0.15s, background 0.15s;
+}
+.admin-add button:hover { border-color: var(--a-accent); border-style: solid; }
+.admin-save {
+  padding: 13px 24px; border: none; border-radius: 8px; font-size: 15px;
+  background: var(--a-ink); color: #fff; transition: background 0.15s;
+}
+.admin-save:hover { background: var(--a-accent); }
+.admin-save:disabled { background: var(--a-muted); cursor: default; }
+
+/* ── Форма ── */
+.admin-form {
+  background: var(--a-panel); border: 1px solid var(--a-line);
+  border-radius: var(--a-radius); padding: 22px; margin: 8px 0 16px;
+  display: flex; flex-direction: column; gap: 16px; box-shadow: var(--a-shadow);
+}
+.admin-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--a-muted); }
+.admin-form input, .admin-form textarea, .admin-form select {
+  border: 1px solid var(--a-line); background: var(--a-panel); color: var(--a-ink);
+  padding: 11px 13px; border-radius: 6px; font-size: 15px; width: 100%;
+}
+.admin-form input:focus, .admin-form textarea:focus, .admin-form select:focus {
+  outline: 2px solid var(--a-accent); outline-offset: -1px;
+}
+.admin-form .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.price-input { position: relative; display: block; }
+.price-input .price-prefix {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  color: var(--a-muted); font-size: 15px; pointer-events: none;
+}
+.price-input input { padding-left: 28px; }
+.admin-form details { border-top: 1px solid var(--a-line); padding-top: 14px; }
+.admin-form summary { cursor: pointer; font-size: 13px; color: var(--a-accent); }
+.admin-form .langs-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+
+/* ── Фото: головне поле форми ── */
+.photo-field { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.photo-field-preview {
+  position: relative; overflow: hidden;
+  width: 100%; max-width: 340px; aspect-ratio: 4/3;
+  border-radius: 8px; background: var(--a-bg);
+}
+.photo-field-empty {
+  width: 100%; max-width: 340px; aspect-ratio: 4/3; display: grid; place-items: center;
+  background: var(--a-bg); border: 1px dashed var(--a-line); border-radius: 8px;
+  color: var(--a-muted); font-size: 13px;
+}
+.photo-field-btn {
+  display: inline-block; padding: 12px 20px; border-radius: 8px; font-size: 15px;
+  background: var(--a-accent-soft); color: var(--a-accent); cursor: pointer;
+  transition: background 0.15s;
+}
+.photo-field-btn:hover { background: #e0e4f2; }
+
+/* ── Вибір головного фото ── */
+.hero-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 10px; }
+.hero-pick-item { position: relative; aspect-ratio: 4/3; border: 2px solid transparent; border-radius: 8px; padding: 0; overflow: hidden; background: none; }
+.hero-pick-item img { width: 100%; object-fit: cover; display: block; border-radius: 6px; }
+.hero-pick-item.active { border-color: var(--a-accent); }
+.hero-pick-item:hover { border-color: #b9bfda; }
+
+/* ── Обкладинки блогу ── */
+.blog-admin-row {
+  display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap;
+  background: var(--a-panel); border: 1px solid var(--a-line);
+  border-radius: var(--a-radius); padding: 14px; margin-bottom: 10px;
+}
+.blog-admin-thumb { position: relative; overflow: hidden; width: 140px; aspect-ratio: 1200/630; border-radius: 6px; background: var(--a-bg); flex: none; }
+.blog-admin-info { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.blog-admin-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+
+/* ── Сповіщення ── */
+.admin-msg {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--a-ink); color: #fff; padding: 12px 22px; border-radius: 999px;
+  font-size: 14px; z-index: 100; box-shadow: var(--a-shadow);
+}
+
+/* ── Телефон ── */
+@media (max-width: 640px) {
+  .admin { padding: 18px 14px 120px; }
+  .admin-top { align-items: center; }
+  .admin-row {
+    grid-template-columns: 34px 84px 1fr;
+    grid-template-areas: "pos thumb title" "act act act";
+    row-gap: 10px; padding: 12px;
+  }
+  .admin-pos { grid-area: pos; font-size: 16px; }
+  .admin-thumb { grid-area: thumb; width: 84px; height: 60px; }
+  .admin-row-title { grid-area: title; }
+  .admin-actions { grid-area: act; justify-content: flex-end; }
+  .admin-actions button { height: 42px; min-width: 42px; }
+  .admin-form { padding: 16px; }
+  .admin-form .row2 { grid-template-columns: 1fr; }
+  /* 16px — інакше iPhone збільшує сторінку при фокусі */
+  .admin input, .admin textarea, .admin select { font-size: 16px; }
+  .admin-save { width: 100%; padding: 15px; }
+  .photo-field-preview, .photo-field-empty, .photo-field-btn { max-width: 100%; width: 100%; text-align: center; }
+}
+
+/* ── Категорії ── */
+.cat-row { grid-template-columns: 1fr auto; align-items: start; }
+.cat-row .admin-row-title input { border: 1px solid var(--a-line); border-radius: 6px; padding: 9px 12px; font-size: 15px; width: 100%; max-width: 320px; background: var(--a-panel); color: var(--a-ink); }
+.cat-row .admin-row-title input:focus { outline: 2px solid var(--a-accent); outline-offset: -1px; }
+.cat-row .admin-row-title .small { margin-top: 6px; }
+.cat-langs { grid-column: 1 / -1; border-top: 1px solid var(--a-line); padding-top: 12px; margin-top: 4px; }
+.cat-langs summary { cursor: pointer; font-size: 13px; color: var(--a-accent); }
+.cat-langs .langs-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.cat-langs label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--a-muted); }
+.cat-langs input { border: 1px solid var(--a-line); border-radius: 6px; padding: 10px 12px; font-size: 15px; background: var(--a-panel); color: var(--a-ink); }
+
+@media (max-width: 640px) {
+  /* .admin-row на телефоні розкладає сітку під фото — категоріям вона не потрібна */
+  .cat-row { grid-template-columns: 1fr auto; grid-template-areas: none; }
+  .cat-row .admin-row-title { grid-area: auto; }
+  .cat-row .admin-actions { grid-area: auto; }
+  .cat-row .cat-langs { grid-area: auto; }
+  .cat-row .admin-row-title input { max-width: none; }
+}
+
+/* текстові поля сторінки «Про мене» */
+.admin-form textarea { line-height: 1.6; resize: vertical; min-height: 90px; }
+
+/* ── Журнал подій ── */
+.admin-logs-filter {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+  background: var(--a-panel); border: 1px solid var(--a-line);
+  border-radius: var(--a-radius); padding: 16px 18px; margin-bottom: 16px;
+}
+.admin-logs-filter label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--a-muted); }
+.admin-logs-filter select {
+  border: 1px solid var(--a-line); background: var(--a-panel); color: var(--a-ink);
+  padding: 9px 12px; border-radius: 6px; font-size: 14px;
+}
+.admin-logs-filter .admin-save { padding: 10px 20px; font-size: 14px; }
+.admin-logs-table-wrap {
+  overflow-x: auto; background: var(--a-panel); border: 1px solid var(--a-line);
+  border-radius: var(--a-radius);
+}
+.admin-logs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-logs-table th, .admin-logs-table td {
+  text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--a-line);
+  white-space: nowrap;
+}
+.admin-logs-table td:last-child { white-space: normal; min-width: 200px; }
+.admin-logs-table th { color: var(--a-muted); font-weight: 500; }
+.admin-logs-table tr:last-child td { border-bottom: none; }
+.admin-logs-table td.muted { color: var(--a-muted); white-space: normal; text-align: center; }
+
+/* Кількість робіт на головній — три великі кнопки-цифри. */
+.home-count-pick { display: flex; gap: 8px; margin: 12px 0 4px; }
+.home-count-pick button {
+  width: 52px; height: 44px; border: 1px solid var(--a-line); border-radius: 8px;
+  font-size: 16px; background: var(--a-panel); color: var(--a-ink);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.home-count-pick button:hover { border-color: var(--a-accent); }
+.home-count-pick button.active { background: var(--a-accent); border-color: var(--a-accent); color: #fff; }

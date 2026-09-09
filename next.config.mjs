@@ -1,0 +1,88 @@
+// Content-Security-Policy.
+//
+// script-src 'unsafe-inline' — вимушено, і ось чому. App Router вкладає
+// payload React Server Components прямо в HTML інлайновими скриптами
+// (self.__next_f.push(...)): на дев'яти сторінках сайту їх 47, вміст у
+// кожної свій і змінюється з кожною збіркою. Захешувати їх неможливо, а
+// nonce вимагає, щоб HTML генерувався на кожен запит — тобто відмови від
+// статики для всіх 106 сторінок. Наш власний інлайн (theme-init) захешувати
+// якраз можна, але хеш і 'unsafe-inline' в одній директиві несумісні:
+// щойно з'являється хеш, браузер ігнорує 'unsafe-inline' — і всі 47
+// скриптів Next.js падають разом із гідратацією.
+//
+// Що політика все одно тримає: зовнішній скрипт (<script src=чужий-домен>)
+// не завантажиться, дані нікуди не підуть — connect-src і img-src замкнені
+// на свій домен, <base> не підмінити, форму не перенаправити на чужий
+// приймач, сайт не вкласти в чужий фрейм.
+//
+// blob: в img-src — прев'ю фото в адмінці: PhotoField робить
+// URL.createObjectURL(file) ще до завантаження на сервер.
+// data: — заглушки й службові однопіксельні зображення.
+// *.public.blob.vercel-storage.com — сховище Vercel Blob віддає файли зі
+// свого домену. Netlify Blobs сюди не треба: їх ми віддаємо своїм
+// маршрутом /uploads/[file], тобто зі свого домену.
+// 'unsafe-eval' не потрібен: у клієнтських чанках прод-збірки немає ні
+// eval(, ні new Function( — перевірено пошуком по .next/static.
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
+  "font-src 'self'",
+  "media-src 'self'",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join("; ");
+
+const isProd = process.env.NODE_ENV === "production";
+
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+    ],
+  },
+  // sharp має нативний бінарник — sharp уже в стандартному переліку Next.js,
+  // але фіксуємо явно, щоб бандлер точно не спробував затягнути його в
+  // серверний JS-бандл (це ламає нативні .node-файли).
+  serverExternalPackages: ["sharp"],
+  // Netlify виставляє NETLIFY=true лише на етапі build; у рантаймі
+  // Server Handler (Netlify Function) цієї змінної вже немає.
+  // Фіксуємо ознаку хмари саме тут — Next.js вбудовує значення як
+  // літерал у скомпільований код, тож рантайм-оточення більше не важливе.
+  env: {
+    IS_NETLIFY_BUILD: process.env.NETLIFY ?? "",
+  },
+  // Сторінки йдуть через Next.js Server Handler (Netlify Function), а не
+  // як статика — тож заголовки безпеки з netlify.toml [[headers]] їх не
+  // зачіпають. Виставляємо їх тут, самим Next.js, для всіх відповідей.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          {
+            // Увімкнена, не Report-Only. У dev лишається Report-Only:
+            // Turbopack віддає модулі через eval і додає свої інлайни, і
+            // під бойовою політикою dev-сервер просто не працював би —
+            // а послаблювати політику заради dev означало б випустити на
+            // прод не те, що перевіряли.
+            key: isProd
+              ? "Content-Security-Policy"
+              : "Content-Security-Policy-Report-Only",
+            value: csp,
+          },
+        ],
+      },
+    ];
+  },
+};
+export default nextConfig;

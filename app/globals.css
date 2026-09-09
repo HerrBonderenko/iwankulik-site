@@ -1,0 +1,2024 @@
+/* Система Кулика.
+   ---------------------------------------------------------------
+   :root тримає все, що від теми не залежить: гарнітури, рух, сітку
+   й охру (вона працює на обох фонах — у світлій темі лише темніє,
+   див. нижче).
+   Самі кольори живуть у [data-theme]. Тема — свідомий вибір
+   відвідувача, а не prefers-color-scheme: за замовчуванням темна,
+   бо олія на галерейному тлі читається глибше. Перемикач дає
+   подивитись ті самі роботи при денному світлі. */
+:root {
+  --accent: #C0873C;
+  --accent-hover: #DCA55C;
+
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-body: var(--font-archivo), system-ui, sans-serif;
+
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-fast: 150ms;
+  --dur-base: 240ms;
+  --dur-slow: 260ms;
+
+  --container: 1440px;
+  --gutter: 56px;
+}
+
+/* Темна — типова: музейне тло, світлий текст. */
+[data-theme="dark"] {
+  /* Системні елементи (смуги прокрутки, автозаповнення, дефолтні
+     контроли) мають знати тему — інакше браузер малює їх світлими. */
+  color-scheme: dark;
+  --bg: #171614;
+  --bg-deep: #0E0D0C;
+  --bg-panel: #100F0E;
+
+  --text: #EFEBE4;
+  --text-strong: rgba(239, 235, 228, 0.9);
+  --text-body: rgba(239, 235, 228, 0.82);
+  --text-secondary: rgba(239, 235, 228, 0.66);
+  --text-tertiary: rgba(239, 235, 228, 0.62);
+  --text-meta: rgba(239, 235, 228, 0.56);
+  --text-label: rgba(239, 235, 228, 0.54);
+  --text-quiet: rgba(239, 235, 228, 0.50);
+  --text-faint: rgba(239, 235, 228, 0.44);
+  --text-faintest: rgba(239, 235, 228, 0.42);
+
+  --accent-line: rgba(192, 135, 60, 0.45);
+  /* Колір тексту поверх акцентної заливки — не дорівнює жодному
+     фоновому токену: в обох темах це протилежність акценту. */
+  --on-accent: #100F0E;
+  /* Ледь помітна заливка «обраного» (картка типу замовлення). */
+  --wash: rgba(239, 235, 228, 0.05);
+
+  --border: rgba(239, 235, 228, 0.14);
+  --border-strong: rgba(239, 235, 228, 0.18);
+  --border-hero: rgba(239, 235, 228, 0.2);
+}
+
+/* Світла — денне світло майстерні. Прозорості тексту навмисно вищі,
+   ніж у темній: темна фарба на світлому тлі при однаковій альфі
+   читається гірше за світлу на темному, тож кожна сходинка підтягнута.
+   Охра теж темнішає до умбри — #C0873C на молоці дає близько 3.1:1,
+   замало для тексту. */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #FDFBF7;
+  --bg-deep: #F2EDE4;
+  --bg-panel: #F7F3EB;
+
+  --text: #2C2A26;
+  --text-strong: rgba(44, 42, 38, 0.9);
+  --text-body: rgba(44, 42, 38, 0.82);
+  --text-secondary: rgba(44, 42, 38, 0.78);
+  --text-tertiary: rgba(44, 42, 38, 0.74);
+  --text-meta: rgba(44, 42, 38, 0.68);
+  --text-label: rgba(44, 42, 38, 0.66);
+  --text-quiet: rgba(44, 42, 38, 0.60);
+  --text-faint: rgba(44, 42, 38, 0.54);
+  --text-faintest: rgba(44, 42, 38, 0.52);
+
+  --accent: #8B6D4A;
+  --accent-hover: #6F5539;
+  --accent-line: rgba(139, 109, 74, 0.5);
+  --on-accent: #FDFBF7;
+  --wash: rgba(44, 42, 38, 0.05);
+
+  --border: rgba(44, 42, 38, 0.12);
+  --border-strong: rgba(44, 42, 38, 0.18);
+  --border-hero: rgba(44, 42, 38, 0.2);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+/* Шапка липка й заввишки 65px — без цього відступу будь-який якір
+   (#cycles, пункт змісту статті, #id роботи в галереї) приводив
+   ціль рівно під неї. 20px зверху — щоб не притулялось впритул. */
+html { scroll-behavior: smooth; scroll-padding-top: 85px; }
+html.restoring-scroll { scroll-behavior: auto; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  /* Синій прямокутник підсвітки на тапі в WebKit — свій :active нижче
+     дає зрозумілішу відповідь. Ланцюжок прокрутки вимкнено, щоб
+     дотяг у кінці сторінки не тягнув сторінку під нею. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Подвійний тап для зуму на кнопках і посиланнях дає 300 мс затримки
+   перед кліком — вимикаємо його точково, а не на всій сторінці:
+   на тексті й зображеннях зум лишається потрібним. */
+a,
+button,
+summary,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  line-height: 1.02;
+  margin: 0;
+}
+
+/* Cormorant у 300 — світлий штрих під темний фон; відʼємний трекінг
+   гасить природну розрідженість антикви у великому кеглі. */
+h1 { font-size: clamp(2.5rem, 5vw, 3.625rem); letter-spacing: -0.032em; }
+h2 { font-size: clamp(2rem, 4vw, 3.625rem); letter-spacing: -0.032em; }
+h3 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.03em; }
+h4 { font-size: 1.625rem; letter-spacing: -0.02em; }
+
+/* Навігація і технічні підписи — дрібний розріджений гротеск. */
+nav a {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease);
+}
+a:hover { color: var(--accent-hover); }
+
+::selection {
+  background: var(--accent);
+  color: var(--bg-deep);
+}
+img, video { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, textarea, select { font: inherit; }
+
+/* Технічні підписи: дрібний розріджений гротеск трьома градаціями. */
+.meta {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--text-meta);
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-label);
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Єдина сітка сайту: ширина й поле беруться з токенів, брейкпоінти
+   тільки зменшують поле — максимальна ширина лишається спільною. */
+.container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+@media (max-width: 920px) { .container { padding: 0 32px; } }
+@media (max-width: 560px) { .container { padding: 0 20px; } }
+
+.link { text-decoration: underline; text-underline-offset: 3px; }
+
+/* .link задумувався для посилань: колір і :hover приходили із селектора
+   a. На <button> той селектор не діє, і головна кнопка покупки
+   («Придбати» в галереї) малювалася кольором тексту й ніяк не
+   відповідала на курсор. Обраний варіант — правило для button.link,
+   а не новий клас: розмітка вже написана з .link у шести місцях.
+   :not(.muted) — щоб навмисно тихі кнопки («показати мініатюри»)
+   лишалися тихими. */
+button.link:not(.muted) {
+  color: var(--accent);
+  transition: color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  button.link:not(.muted):hover { color: var(--accent-hover); }
+}
+/* .muted у двох ролях: сам по собі — підзаголовок чи абзац,
+   у парі з .small — технічний підпис, тому тихіший. */
+.muted { color: var(--text-secondary); }
+
+/* Єдина рамка фокуса на весь сайт. Доти :focus-visible був рівно один
+   (на кнопці звуку), а поля форм малювали обведення альфою 0.18 —
+   контраст 1.3:1, тобто його фактично не було видно.
+   outline-offset відсуває рамку від самого елемента: на кнопках з
+   overflow: hidden вона малюється зовні й не обрізається. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.small.muted, .muted.small { color: var(--text-meta); }
+/* letter-spacing успадковується вже обчисленим у px: -0.032em на h2
+   у 58px дає -1.86px, і всередині 13px-спана літери налазять одна на
+   одну. Дрібний текст усередині заголовка скидає трекінг на свій. */
+.small { font-size: 13px; letter-spacing: normal; }
+
+.section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+.section-title { margin-bottom: 32px; }
+
+/* header */
+.header {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--dur-base) var(--ease);
+}
+.header-inner { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+/* Логотип — не акцентне посилання, а імʼя: перебиває глобальне
+   a { color: var(--accent) } назад на основний колір тексту. */
+.logo {
+  font-size: 16px; font-weight: 500; white-space: nowrap;
+  color: var(--text);
+  transition: color var(--dur-fast) var(--ease);
+}
+.logo:hover { color: var(--text-strong); }
+.nav { display: flex; align-items: center; gap: 24px; font-size: 14px; }
+
+/* Головна дія сайту. Не посилання серед інших, а кнопка: колір,
+   а не підкреслення, і однаковий вигляд у шапці на будь-якій сторінці.
+   Ширину не фіксуємо — у шапці вона впирається в брейкпоінт навігації,
+   а не в перемикання мови (кнопка перемальовується разом з усім рядком).
+
+   Колір — акцент із токенів, той самий, що й у кнопки «Надіслати запит»
+   у формі: одна цільова дія — один колір по всьому сайту. Окремої пари
+   під світлу тему не треба, --accent і --on-accent змінюються самі. */
+.header-cta {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  border-radius: 2px;
+  white-space: nowrap;
+  /* Те саме сяйво, що й у кнопки в героєві, але тісніше: кнопка менша,
+     ореол має бути пропорційним. Проблиску тут нема — два рухомі
+     елементи в одному кадрі перетягували б увагу одне в одного. */
+  box-shadow: 0 0 20px 3px rgba(192, 135, 60, 0.3);
+  transition:
+    box-shadow var(--dur-base) var(--ease),
+    background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  /* Колір обовʼязковий: глобальне a:hover (0,1,1) специфічніше за
+     .header-cta (0,1,0) і перефарбувало б підпис у колір тла. */
+  .header-cta:hover {
+    background: var(--accent-hover);
+    color: var(--on-accent);
+    box-shadow: 0 0 32px 6px rgba(192, 135, 60, 0.45);
+  }
+}
+.header-phone {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 7px 16px;
+  color: var(--text); text-decoration: none;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+/* Кільце — статична тінь на псевдоелементі; анімуються лише opacity
+   й transform (GPU-safe), сама тінь під час пульсу не перераховується. */
+.header-phone::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 5px var(--text-faintest);
+  opacity: 0;
+  pointer-events: none;
+  animation-name: header-phone-pulse;
+  animation-duration: 2.6s;
+  animation-timing-function: var(--ease);
+  animation-delay: 11s;
+  animation-iteration-count: 2;
+  animation-fill-mode: forwards;
+}
+@media (hover: hover) and (pointer: fine) {
+  .header-phone:hover { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+}
+@keyframes header-phone-pulse {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+/* Перемикач теми: тихий, як і решта службових елементів шапки. */
+.theme-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  line-height: 1;
+  transition:
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.theme-btn svg { display: block; flex: none; }
+/* Кнопка рендерить обидва підписи, зайвий ховаємо за темою —
+   так підпис правильний ще до завантаження JS (див. ThemeToggle.js). */
+.theme-btn-on-dark,
+.theme-btn-on-light { display: inline-flex; align-items: center; gap: 7px; }
+[data-theme="dark"] .theme-btn-on-light { display: none; }
+[data-theme="light"] .theme-btn-on-dark { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .theme-btn:hover { color: var(--text); border-color: var(--text-quiet); }
+}
+.mobile-actions .theme-btn { padding: 7px 10px; }
+
+.langs { display: flex; gap: 8px; font-size: 13px; }
+.langs a { color: var(--text-quiet); }
+.langs a.active { color: var(--text); }
+
+/* Тач-зони. Кегль не чіпаємо — росте лише область, у яку треба влучити.
+   Висота 44px безкоштовна: рядок шапки й так 64px.
+   Ширина перемикача мов росте тільки там, де вказівник грубий: на
+   десктопі ці посилання видно лише від 1066px, тобто під мишею, а
+   44px на кожну мову додали б шапці ~100px і підняли б брейкпоінт
+   навігації, відібравши десктопне меню в планшетів. */
+.langs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+@media (pointer: coarse) {
+  .langs { gap: 0; }
+  .langs a { min-width: 44px; }
+}
+
+.burger {
+  display: none;
+  font-size: 14px;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-actions { display: none; align-items: center; gap: 14px; }
+/* Ширина десктопного меню = логотип + gap 24 + сам .nav. Перемірено під
+   підпис «Обрати картину» (він коротший за колишні «Доступні роботи»,
+   тож брейкпоінт вдалося опустити з 1080).
+
+   Найдовша локаль — ru: 942px контенту, тобто мінімальний viewport
+   1055px (942 + 2 x 56 гаттера). Далі: uk 925/1037, en 923/1036,
+   de 887/1000, pl 877/990.
+
+   Брейкпоінт 1065 -> найвужча десктопна ширина 1066px, на 11px більша за
+   мінімум ru — той самий запас, що тримали й попередні значення. Нижче
+   опустити не вийде: 990 вистачає лише польській, а на 991-1054px шапка
+   ru ламалася б у два рядки. Решта @media (max-width: 920px) у файлі —
+   про сітки й герой, до навігації стосунку не мають і лишаються на 920. */
+@media (max-width: 1065px) {
+  .nav { display: none; }
+  .burger { display: inline-flex; }
+  .mobile-actions { display: flex; }
+}
+.mobile-menu {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 24px 20px;
+  font-size: 18px;
+}
+/* Верхній рядок меню — логотип і кнопки, а не пункт навігації:
+   лінія-роздільник і вертикальні відступи там зайві. */
+.mobile-menu a { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.mobile-menu .top a { padding: 0; border-bottom: none; }
+/* Перемикач мов — рядок із п'яти дволітерних кодів, а не пункти меню:
+   спільне правило домальовувало під кожним свій короткий обрубок лінії. */
+.mobile-menu .langs a { padding: 0; border-bottom: none; }
+
+/* Та сама кнопка першим пунктом меню. Селектор із .mobile-menu, щоб
+   перебити спільне правило для пунктів (відступи й лінія знизу). */
+.mobile-menu a.mobile-menu-cta {
+  margin-bottom: 8px;
+  padding: 15px 20px;
+  border-bottom: none;
+  border-radius: 2px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  /* Близнюк кнопки з шапки: той самий акцент і те саме сяйво.
+     Проблиску нема — він лишається однією кнопкою на весь сайт, тією,
+     що лежить на фото. */
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 0 20px 3px rgba(192, 135, 60, 0.3);
+  transition:
+    box-shadow var(--dur-base) var(--ease),
+    background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-menu a.mobile-menu-cta:hover {
+    background: var(--accent-hover);
+    color: var(--on-accent);
+    box-shadow: 0 0 32px 6px rgba(192, 135, 60, 0.45);
+  }
+}
+.mobile-menu .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 14px; }
+
+/* hero */
+.hero { display: flex; gap: 20px; padding: 20px; border-bottom: 1px solid var(--border-hero); }
+.hero-video { flex: 0 0 420px; height: 620px; }
+.hero-video video { width: 100%; height: 100%; object-fit: cover; background: var(--bg-deep); }
+.hero-photo { position: relative; flex: 1; height: 620px; }
+.hero-photo img { object-fit: cover; }
+/* Два шари: знизу — під текст і кнопку, зверху — щоб фото не
+   впиралося в шапку різким краєм. */
+.hero-photo::before {
+  content: "";
+  position: absolute; inset: 0; z-index: 1;
+  background:
+    linear-gradient(to top, rgba(8,8,7,.82) 0%, rgba(8,8,7,.32) 26%, rgba(8,8,7,0) 52%),
+    linear-gradient(to bottom, rgba(8,8,7,.55) 0%, rgba(8,8,7,0) 22%);
+  pointer-events: none;
+}
+/* Відступи від кута кадру однакові з обох боків — блок стоїть на бісектрисі
+   кута, а не «майже симетрично». Значення одне: гаттер сітки плюс 100px,
+   тож при зміні гаттера симетрія збережеться сама. */
+.hero-text {
+  position: absolute;
+  left: calc(var(--gutter) + 100px);
+  /* Знизу трохи менше, ніж ліворуч (156px): плашка висока, і рівний
+     відступ з усіх боків зорово опускав би її нижче центру. */
+  bottom: 100px;
+  z-index: 2;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  /* gap: 0 — відстані задають самі елементи (20px після імені, 36px після
+     заголовка). З gap вони б додавались до нього і поїхали. */
+  gap: 0;
+  max-width: 760px;
+  /* Тіні під великим кеглем: широка тримає літеру на строкатому полотні,
+     вузька дає контур там, де під нею світла пляма. */
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.85), 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+/* Затемнення під текстом. Не коробка навколо блока, а два лінійні
+   градієнти на весь кадр: знизу вгору й зліва направо.
+
+   Тепер це лише легка вуаль зліва — щільне затемнення переїхало в саму
+   плашку (у неї власне тло 0.82 і backdrop-filter). Вуаль потрібна не
+   для читабельності, а щоб плашка не висіла на строкатому полотні:
+   вона гасить контраст фону під нею, але картину лишає видимою.
+   На телефоні цей градієнт не діє — там блок на всю ширину, і в
+   медіазапиті лишається вертикальний. */
+.hero-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* Над фото, але під .hero-text (у того z-index: 2). */
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(8, 8, 7, 0.25) 0%,
+    rgba(8, 8, 7, 0) 45%
+  );
+}
+
+/* Мобільна копія блока ховається на десктопі — вона потрібна лише тоді,
+   коли грає відео (тоді фото на телефоні сховане). */
+.hero-text-mobile { display: none; }
+
+/* Плашка: заголовок і заклик під однією рамкою — одна ціль замість двох.
+   inline-block, щоб ширину задавав сам заголовок, а не колонка блока. */
+.hero-cta-box {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 24px 38px 20px;
+  /* Охра фіксована, не з токена: тло плашки теж не залежить від теми
+     (завжди темне), а --accent-hover у світлій темі темно-коричневий —
+     рамка на такому тлі давала контраст 2.75 замість 3. Той самий підхід,
+     що й у заголовка з його #fdfbf7. */
+  border: 3px solid #dca55c;
+  border-radius: 6px;
+  /* Щільне власне тло + розмиття того, що під ним: текст читається на
+     будь-якій роботі, яку поставлять у герой, без затемнення всього кадру. */
+  background: rgba(8, 8, 7, 0.82);
+  backdrop-filter: blur(3px);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    0 0 30px 4px rgba(192, 135, 60, 0.3);
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    background var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-cta-box:hover {
+    background: rgba(8, 8, 7, 0.88);
+    border-color: #f0c078;
+    box-shadow:
+      0 10px 40px rgba(0, 0, 0, 0.5),
+      0 0 50px 10px rgba(192, 135, 60, 0.5);
+  }
+}
+
+.hero-cta-box:active { transform: scale(0.97); }
+
+/* Клас перебиває глобальні h1 і h1,h2,h3,h4 — і за специфічністю (0,1,0
+   проти 0,0,1), і за порядком у файлі. Усі властивості, які ставлять ті
+   правила, задані тут заново, щоб нічого не протекло.
+   color явно: заголовок тепер усередині <a>, а глобальне
+   a { color: var(--accent) } зробило б його охряним. */
+.hero-tagline {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6.5vw, 5.5rem);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: #fdfbf7;
+  margin: 0;
+}
+
+.hero-cta-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  /* Так само фіксована охра: у світлій темі токен дав би 2.07. */
+  color: #dca55c;
+  transition: gap 300ms var(--ease);
+}
+
+.hero-cta-arrow {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  transition: transform 300ms var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-cta-box:hover .hero-cta-arrow { transform: translateX(8px); }
+}
+
+@media (max-width: 920px) {
+  .hero { position: relative; display: block; gap: 0; padding: 0; }
+  .hero-video { position: relative; height: 80vh; min-height: 480px; }
+  .hero-video::before {
+    content: "";
+    position: absolute; inset: 0; z-index: 1;
+    background:
+      linear-gradient(to top, rgba(8,8,7,.82) 0%, rgba(8,8,7,.32) 26%, rgba(8,8,7,0) 52%),
+      linear-gradient(to bottom, rgba(8,8,7,.55) 0%, rgba(8,8,7,0) 22%);
+    pointer-events: none;
+  }
+  .hero-photo { display: none; }
+  /* Відео вимкнене: на телефоні саме воно було єдиним видимим шаром,
+     тож повертаємо фото й даємо йому ту саму висоту. */
+  .hero.no-video .hero-photo {
+    display: block;
+    height: 80vh;
+    min-height: 480px;
+  }
+  .hero-text { left: 20px; bottom: calc(92px + env(safe-area-inset-bottom)); right: 20px; }
+  /* На телефоні кадр вужчий і вищий — горизонтальний складник зайвий,
+     лишається лише затемнення знизу. */
+  .hero-photo::after {
+    background: linear-gradient(
+      to top,
+      rgba(8, 8, 7, 0.92) 0%,
+      rgba(8, 8, 7, 0.8) 34%,
+      rgba(8, 8, 7, 0) 72%
+    );
+  }
+  .hero-text-mobile { display: flex; }
+  /* Вужчий екран — тісніші поля плашки, інакше вона впирається в краї. */
+  .hero-cta-box { padding: 20px 24px 16px; }
+  .hero-cta-label { font-size: 13px; gap: 8px; }
+}
+
+/* grids */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+@media (max-width: 920px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+.card { display: flex; flex-direction: column; gap: 8px; }
+.card-img { position: relative; aspect-ratio: 4 / 3; background: var(--bg-deep); overflow: hidden; }
+.card-img img { object-fit: cover; transition: opacity var(--dur-base) var(--ease); }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .card-img img { opacity: 0.92; }
+}
+.card-caption { font-size: 13px; color: var(--text-meta); }
+
+/* process */
+.process { display: flex; gap: 64px; align-items: flex-start; }
+.process-video { flex: 0 0 380px; }
+.process-video video { width: 100%; aspect-ratio: 464 / 848; object-fit: cover; background: var(--bg-deep); }
+.process-text p { color: var(--text-body); }
+.process-text { max-width: 560px; display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
+/* Поруч із відео пункти йдуть стовпчиком — як і раніше. Розкладку
+   в три колонки вмикає лише .no-video (нижче), тож увімкнення відео
+   повертає секцію до вихідного вигляду без жодних інших правок. */
+.process-list { display: flex; flex-direction: column; gap: 18px; }
+
+/* Відео вимкнене: секція повторює сусідню «Як придбати роботу» —
+   заголовок на всю ширину, під ним три рівні колонки. */
+.process.no-video { display: block; }
+.process.no-video .process-text { max-width: 100%; gap: 0; }
+.process.no-video .process-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 44px;
+  margin-top: 48px;
+}
+@media (max-width: 920px) {
+  .process { flex-direction: column; gap: 32px; }
+  .process-video { flex: none; width: 100%; max-width: 460px; }
+  .process.no-video .process-list { grid-template-columns: 1fr; gap: 28px; }
+}
+
+/* steps */
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+@media (max-width: 920px) { .steps { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
+.step-num { font-size: 13px; color: var(--text-meta); margin-bottom: 6px; }
+.step-title { font-weight: 500; margin-bottom: 4px; }
+.step-desc { font-size: 13px; color: var(--text-secondary); }
+
+/* cta */
+.cta { text-align: center; padding: 72px 0; background: var(--bg-deep); }
+.cta-title { margin-bottom: 16px; }
+
+/* footer */
+.footer { padding: 32px 0; font-size: 13px; color: var(--text-tertiary); display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+.footer-copy { color: var(--text-faint); }
+.footer-credit { color: var(--text-faintest); }
+.footer-credit-link { text-decoration: none; }
+@media (hover: hover) and (pointer: fine) {
+  .footer-credit-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+}
+
+/* filter */
+.filter { display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; margin-bottom: 32px; }
+.filter button, .filter a {
+  display: inline-block; color: var(--text-tertiary); border: 1px solid var(--border); border-radius: 999px;
+  padding: 7px 16px;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.filter button::first-letter, .filter a::first-letter { text-transform: uppercase; }
+@media (hover: hover) and (pointer: fine) {
+  .filter button:hover, .filter a:hover { color: var(--text); border-color: var(--border-strong); }
+}
+/* Активний фільтр обведений охрою, а не залитий: суцільна пляма
+   перетягувала б увагу з робіт на панель фільтрів. */
+.filter button.active, .filter a.active {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+/* object page */
+.object-hero { position: relative; aspect-ratio: 16 / 10; background: var(--bg-deep); }
+.object-hero img { object-fit: cover; }
+.object-body { display: flex; gap: 64px; padding: 48px 0; }
+.object-meta { flex: 0 0 240px; display: flex; flex-direction: column; gap: 14px; font-size: 13px; }
+.object-meta dt { color: var(--text-label); }
+.object-meta dd { margin: 2px 0 0; }
+.object-text { max-width: 620px; display: flex; flex-direction: column; gap: 18px; }
+@media (max-width: 920px) { .object-body { flex-direction: column; gap: 32px; } }
+
+/* gallery */
+.viewer { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 48px 0; }
+.viewer-img { position: relative; width: 100%; max-width: 760px; aspect-ratio: 1 / 1; background: var(--bg-deep); }
+.viewer-img img { object-fit: contain; }
+.viewer-caption { text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.viewer-title { font-size: 15px; font-weight: 500; }
+.viewer-nav { display: flex; align-items: center; gap: 20px; font-size: 14px; }
+.viewer-nums { display: flex; flex-wrap: wrap; gap: 0; justify-content: center; font-size: 13px; color: var(--text-meta); max-width: 640px; }
+/* Номери робіт були ~17px — найдрібніша ціль на сторінці. Gap прибрано
+   на ту саму величину, на яку виросли самі кнопки: рядок лишився таким,
+   яким був. */
+.viewer-nums button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.viewer-nums button.active { color: var(--text); }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px 16px; padding: 32px 0; }
+@media (max-width: 720px) { .thumbs { grid-template-columns: 1fr 1fr; gap: 24px 14px; } }
+/* display: block і color — бо .thumb тепер <a>: інлайновий за
+   замовчуванням і успадкував би охру глобального a { color }. */
+.thumb { display: block; position: relative; aspect-ratio: 1 / 1; background: var(--bg-deep); cursor: pointer; color: inherit; }
+.thumb img { object-fit: cover; }
+.thumb-card { margin: 0; }
+.thumb-cap { display: flex; flex-direction: column; gap: 2px; padding-top: 10px; }
+.thumb-title { font-size: 14px; }
+.thumb-act { align-self: flex-start; margin-top: 4px; text-align: left; }
+/* Ціна скрізь однакова: охра, як у підписі під прев'ю на головній. */
+.painting-price { font-weight: 500; color: var(--accent); }
+
+/* постійний номер роботи (К-001) */
+
+/* Інвентарний номер: моноширинний, дрібніший за назву й приглушений —
+   орієнтир для телефонної розмови, а не другий заголовок.
+   user-select: all — щоб виділявся цілком одним кліком. */
+.work-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; letter-spacing: 0.08em; color: var(--text-meta);
+  white-space: nowrap; user-select: all;
+}
+
+/* Рядок картки: назва зліва, номер притиснутий праворуч. Коли назва
+   не влазить, номер переходить під неї (лишаючись правою колонкою),
+   а не наїжджає на текст. */
+.work-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.work-line > :first-child { flex: 1 1 auto; min-width: 0; }
+.work-line .work-code { flex: none; margin-left: auto; }
+
+/* Пошук підводить сторінку до галереї — відступ на висоту липкої
+   шапки, щоб поле з номером не ховалося під нею. */
+.gallery-box { scroll-margin-top: 88px; }
+
+/* Пошук за номером у футері: компактне поле й кнопка поруч. Підказка
+   про формат з'являється тільки після помилкового вводу — постійна
+   висіла б на кожній сторінці сайту. */
+.footer-search { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.footer-search input {
+  width: 96px; padding: 5px 12px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg); color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.footer-search input::placeholder { color: var(--text-meta); text-transform: none; letter-spacing: normal; }
+
+.footer-search button {
+  padding: 5px 14px; font-size: 12px; color: var(--text-tertiary);
+  border: 1px solid var(--border); border-radius: 999px;
+  transition:
+    color var(--dur-slow) var(--ease),
+    border-color var(--dur-slow) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .footer-search button:hover { color: var(--text); border-color: var(--border-strong); }
+}
+.footer-search-msg { font-size: 12px; color: var(--text-meta); flex-basis: 100%; }
+/* 16px — інакше iOS збільшує сторінку при фокусі в полі */
+@media (max-width: 720px) {
+  .footer-search input { font-size: 16px; width: 116px; }
+  .footer-search button { font-size: 14px; padding: 6px 16px; }
+}
+
+/* modal */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal {
+  background: var(--bg); color: var(--text);
+  width: 100%; max-width: 480px; max-height: 92vh; overflow: auto;
+  padding: 28px; border-radius: 4px; position: relative;
+  display: flex; flex-direction: column; gap: 16px;
+}
+/* Фокус при відкритті ставимо на сам контейнер діалогу (див. useDialog):
+   рамка навколо всієї панелі нічого не пояснює — панель і так єдине, що
+   видно. Обведення лишається на елементах усередині. */
+.modal:focus, .modal:focus-visible,
+.mobile-menu:focus, .mobile-menu:focus-visible { outline: none; }
+.modal-close {
+  position: absolute;
+  /* Від'ємні поля компенсують нову зону: хрестик лишається там, де був. */
+  top: 4px; right: 6px;
+  width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--text-tertiary);
+}
+.modal-head { display: flex; gap: 16px; align-items: center; }
+.modal-thumb { position: relative; width: 72px; height: 72px; flex: none; background: var(--bg-deep); }
+.modal-thumb img { object-fit: cover; }
+.form { display: flex; flex-direction: column; gap: 12px; }
+.form label { font-size: 13px; color: var(--text-label); display: flex; flex-direction: column; gap: 4px; }
+.form input, .form textarea {
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  padding: 10px 12px; border-radius: 2px; font-size: 14px;
+}
+
+/* Головна цільова дія форми — залита акцентом. Вторинний стиль
+   (прозорий + обведення) лишається для допоміжних кнопок. */
+.form button[type="submit"] {
+  margin-top: 6px; padding: 12px;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  font-size: 14px; border-radius: 2px;
+  transition: background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .form button[type="submit"]:hover { background: var(--accent-hover); }
+}
+.form-note { font-size: 13px; color: var(--text-meta); }
+/* Пастка для ботів у OrderForm — сховано стилями, не атрибутом hidden. */
+.hp-field { position: absolute; left: -5000px; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+
+/* Картки вибору типу замовлення у OrderForm. Обраний стан навмисне тихий
+   (як .filter-sub button.active) — суцільна чорна заливка тут перетягувала
+   б увагу на себе сильніше за заголовок форми: тонований фон і риска
+   знизу замість заливки. border-bottom-width лишається 2px завжди
+   (тільки колір міняється), щоб перемикання типу не смикало висоту. */
+/* Сторінка 404. Живе всередині макета сайту, тож шапка й футер на місці —
+   лишається дати великий номер, пояснення і три виходи. */
+.not-found { padding: 80px 0 140px; }
+
+.not-found-code {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 96px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--text-faintest);
+  margin-bottom: 18px;
+}
+
+.not-found-text { max-width: 460px; margin-top: 12px; }
+
+.not-found-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin-top: 40px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 920px) {
+  .not-found { padding: 48px 0 90px; }
+  .not-found-code { font-size: 64px; }
+  .not-found-links { gap: 18px; flex-direction: column; }
+}
+
+/* scroll to top */
+.scroll-top {
+  position: fixed; right: 24px; bottom: 76px; z-index: 60;
+  width: 44px; height: 44px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 16px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    opacity var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease),
+    transform var(--dur-fast) var(--ease);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+.scroll-top[data-show="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+@media (hover: hover) and (pointer: fine) {
+  .scroll-top:hover { border-color: var(--text); }
+}
+@media (max-width: 720px) { .scroll-top { right: 16px; bottom: 80px; } }
+
+/* Єдиний блок prefers-reduced-motion живе в самому кінці файлу. */
+
+/* кнопка звуку на відео процесу */
+.process-video { position: relative; }
+.sound-btn {
+  position: absolute; left: 12px; bottom: 12px;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 15px; border-radius: 999px; font-size: 13px;
+  background: rgba(20, 20, 20, 0.62); color: #fff;
+  backdrop-filter: blur(6px); transition: background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sound-btn:hover { background: rgba(20, 20, 20, 0.82); }
+}
+.sound-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Два рівні фільтра. Верхній — напрям, він головний і залитий.
+   Нижній — категорія всередині напряму, тому тихіший: обведення
+   замість заливки, інакше два чорні «Всі» поруч плутають. */
+.filter-main { margin-bottom: 10px; }
+.filter-sub { font-size: 13px; margin-bottom: 32px; padding-left: 2px; }
+.filter-sub button { padding: 6px 14px; }
+.filter-sub button.active {
+  background: none; color: var(--text); border-color: var(--text);
+}
+
+/* Позначка «в наявності» на самій картині. Приглушена навмисне:
+   сайт тихий, кричущий бейдж як в інтернет-магазині тут чужий. */
+.thumb-badge {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; font-size: 11px; letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.92); color: #1a1a1a;
+  backdrop-filter: blur(4px); pointer-events: none;
+}
+.thumb-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #2f7a4f; display: block;
+}
+
+/* Цикли
+   ---------------------------------------------------------------
+   П'ять рядків, дві колонки, зображення й назва навмисно налазять
+   одне на одне: геометрію кожного рядка задає CyclesSection.js
+   інлайново, тут — усе спільне. Назва лежить поверх фото, тому
+   pointer-events: none — інакше вона перехоплювала б наведення. */
+.cycles-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 80px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cycles-intro {
+  max-width: 620px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 27px;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: var(--text-body);
+  text-wrap: pretty;
+  margin: 0;
+}
+
+.cycles-meta { flex: none; white-space: nowrap; }
+
+/* column-gap з'явився разом із відмовою від накладання: доти кадри
+   навмисно вилазили в сусідню колонку, і проміжок між ними був би зайвим.
+   row-gap менший за колишні 104px: без перекриття рядки стоять рівно один
+   під одним, і старий інтервал розсипав секцію на п'ять окремих блоків
+   замість спільного ритму. */
+.cycles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 64px;
+  row-gap: 88px;
+  margin-top: 82px;
+}
+
+.cycle-img {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  background: var(--bg-deep);
+  cursor: pointer;
+}
+
+.cycle-img-inner {
+  position: absolute;
+  inset: 0;
+  transform: scale(var(--s, 1));
+  transition: transform var(--dur-slow) var(--ease);
+}
+.cycle-img-inner img { object-fit: cover; }
+
+/* Плейсхолдер, поки не залито фото циклу: мовчазний прямокутник.
+   Назва циклу і так лежить поверх кадру — дублювати її всередині
+   означало б показувати той самий текст двічі. */
+.cycle-img-empty {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-deep);
+}
+
+.cycle-img::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0;
+  z-index: 2;
+  height: 1px;
+  width: var(--w, 0%);
+  background: var(--accent);
+  pointer-events: none;
+  transition: width var(--dur-base) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cycle-img:hover { --s: 1.045; --w: 100%; }
+}
+
+/* align-self: center — назва стоїть на середині висоти свого кадру.
+   По верху вона читалась як окремий заголовок, що висить сам по собі;
+   на середині видно, що це підпис саме до цієї роботи. */
+.cycle-text { align-self: center; }
+
+/* color: inherit перебиває глобальне a { color: var(--accent) }: назва —
+   це заголовок, а не акцентне посилання. */
+.cycle-title-link { color: inherit; }
+
+.cycle-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 64px;
+  line-height: 0.96;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.cycle-title.featured {
+  font-size: 88px;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+}
+
+.cycle-count {
+  margin-top: 14px;
+  display: flex;
+  gap: 24px;
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.cycles-foot {
+  margin-top: 112px;
+  padding-top: 34px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 80px;
+}
+
+.cycles-note {
+  max-width: 560px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 19px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.cycles-all {
+  flex: none;
+  font-size: 13px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent-line);
+  padding-bottom: 3px;
+}
+
+@media (max-width: 920px) {
+  .cycles-head, .cycles-foot { flex-direction: column; align-items: flex-start; gap: 24px; }
+  /* Кадр і підпис — дві сусідні комірки однієї колонки, тож row-gap діє
+     саме між ними, а не між парами. Тому робимо його малим (відстань
+     усередині пари), а проміжок між парами добираємо полем під підписом:
+     16 + 56 = 72. Інакше margin-top лише додавався б до row-gap і
+     розсовував пару ще далі. */
+  .cycles-grid { grid-template-columns: 1fr; row-gap: 16px; margin-top: 48px; }
+  /* Не дочірній селектор: .cycle-row має display: contents, тож у сітці
+     кадр і підпис поводяться як власні комірки, але в DOM лишаються
+     дітьми рядка — і `.cycles-grid > .cycle-text` не збігається ні з чим. */
+  .cycle-row:last-child .cycle-text { margin-bottom: 0; }
+  /* Інлайнова геометрія рядків тут не діє: одна колонка, все по порядку.
+     grid-column/grid-row треба скинути — інакше кадр і назва лишились би
+     в одній комірці. Пропорцію теж вирівнюємо: широкий 16/10 першого
+     рядка на телефоні став би надто низькою смужкою. */
+  .cycle-img {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    aspect-ratio: 4 / 3 !important;
+  }
+  .cycle-text {
+    margin-top: 0;
+    margin-bottom: 56px;
+    text-align: left !important;
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+  .cycle-count { justify-content: flex-start !important; }
+  .cycle-title { font-size: 40px; }
+  .cycle-title.featured { font-size: 44px; }
+  .cycles-intro { font-size: 21px; }
+  .cycles-note { font-size: 17px; }
+}
+
+/* Сторінка списку циклів (/[locale]/cycles) — проста сітка карток,
+   без накладань головної: тут завдання не справити враження, а дати
+   перейти в потрібний цикл. */
+.cycles-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 48px 24px;
+}
+@media (max-width: 920px) { .cycles-list { grid-template-columns: 1fr 1fr; gap: 32px 16px; } }
+@media (max-width: 560px) { .cycles-list { grid-template-columns: 1fr; } }
+
+.cycle-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--text);
+}
+.cycle-card-img {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+.cycle-card-img img { object-fit: cover; }
+.cycle-card-img .cycle-img-empty { position: absolute; inset: 0; }
+.cycle-card-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.cycle-card .cycle-count { margin-top: 0; }
+
+/* Той самий hover, що на картках робіт і в секції циклів. */
+.cycle-card-img::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0;
+  z-index: 2;
+  height: 1px;
+  width: var(--w, 0%);
+  background: var(--accent);
+  pointer-events: none;
+  transition: width var(--dur-base) var(--ease);
+}
+.cycle-card-img img,
+.cycle-card-img .cycle-img-empty {
+  transform: scale(var(--s, 1));
+  transition: transform var(--dur-slow) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cycle-card:hover .cycle-card-img { --w: 100%; }
+  .cycle-card:hover .cycle-card-img img,
+  .cycle-card:hover .cycle-card-img .cycle-img-empty { --s: 1.045; }
+}
+
+/* Головне зображення на сторінці одного циклу. */
+.cycle-hero {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+.cycle-hero img { object-fit: cover; }
+
+/* Текст сторінки циклу. Ширина рядка 620px — між .about-text (560) і
+   .blog-article (760): тут немає ні бічної колонки з портретом, ні
+   заголовків усередині, тож рядок може бути трохи довшим за біографію.
+   Назва не .cycle-text: той клас уже зайнятий підписом у списку циклів
+   на головній, а там своя геометрія. */
+.cycle-body { max-width: 620px; margin-top: 40px; }
+
+.cycle-body p {
+  font-size: 15px;
+  line-height: 1.8;
+  /* --text-body, а не --text-secondary: така сама щільність, як у
+     біографії на /pro-mene (.about-text p). Проза на сусідніх сторінках
+     не має відрізнятися на пів кроку. */
+  color: var(--text-body);
+  text-wrap: pretty;
+  margin: 0 0 18px;
+}
+
+/* Автентичність
+   ---------------------------------------------------------------
+   Блок довіри: текст ліворуч, колаж із трьох кадрів праворуч.
+   Координати кадрів задає AuthenticitySection.js інлайново —
+   нижче 1200px вони перебиваються звичайною сіткою. */
+.authenticity {
+  background: var(--bg-panel);
+  padding: 130px 0 140px;
+}
+
+.auth-inner {
+  display: flex;
+  gap: 80px;
+  align-items: flex-start;
+}
+
+.auth-left { width: 504px; flex: none; }
+
+.auth-lead {
+  margin-top: 26px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  max-width: 440px;
+  text-wrap: pretty;
+}
+
+.auth-list {
+  margin-top: 44px;
+  border-top: 1px solid var(--border);
+}
+
+.auth-item {
+  display: flex;
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-item-label {
+  width: 170px;
+  flex: none;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-label);
+  padding-top: 3px;
+}
+
+.auth-item-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-body);
+}
+
+.auth-actions {
+  margin-top: 38px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.auth-photos {
+  position: relative;
+  width: 744px;
+  height: 700px;
+  flex: none;
+}
+
+.auth-photo {
+  position: absolute;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+
+.auth-note {
+  position: absolute;
+  left: 478px;
+  top: 490px;
+  width: 266px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  color: var(--text-label);
+  text-wrap: pretty;
+}
+
+@media (max-width: 1200px) {
+  .auth-inner { flex-direction: column; }
+  .auth-left { width: 100%; }
+  .auth-photos { width: 100%; height: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .auth-photo { position: static !important; width: 100% !important; height: auto !important; aspect-ratio: 4/5; }
+  .auth-note { position: static !important; width: 100% !important; grid-column: 1 / -1; }
+}
+
+/* Назви робіт бувають довгі («Ілюстрація до Майстра і Маргарити»):
+   при 26px така назва на телефоні ламається в два рядки. */
+@media (max-width: 560px) {
+}
+
+@media (max-width: 560px) {
+  .authenticity { padding: 80px 0 90px; }
+  .auth-item { flex-direction: column; gap: 8px; }
+  .auth-item-label { width: 100%; }
+  .auth-photos { grid-template-columns: 1fr; }
+}
+
+/* Натиск. На телефоні :hover не існує зовсім, і до цього дотик не давав
+   жодної відповіді. .hero-cta-box має власний :active — його тут нема. */
+/* transform дописано в кожен власний transition окремо: одне групове
+   правило нижче за файлом перебило б їх цілком, і кнопки втратили б
+   переходи кольору й тіні. Ті, що переходів не мали, отримують його тут. */
+.burger,
+.modal-close,
+.viewer-nums button {
+  transition: transform var(--dur-fast) var(--ease);
+}
+.btn-primary:active,
+.btn-secondary:active,
+.header-cta:active,
+.mobile-menu a.mobile-menu-cta:active,
+.works-filter:active,
+.theme-btn:active,
+.burger:active,
+.scroll-top:active,
+.sound-btn:active,
+.modal-close:active,
+.viewer-nums button:active,
+.footer-search button:active,
+.form button[type="submit"]:active,
+button.link:active {
+  transform: scale(0.97);
+}
+
+/* Вимкнена кнопка не має вдавати робочу: під час відправки форми
+   submit лишався на вигляд звичайним. */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Дві кнопки системи. Плашка героя (.hero-cta-box) — окремий випадок:
+   вона лежить на фото й має власну геометрію. */
+.btn-primary,
+.btn-secondary {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 14px 26px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  transition:
+    background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.btn-primary:hover { background: var(--accent-hover); color: var(--on-accent); }
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-body);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.btn-secondary:hover {
+  border-color: var(--text-tertiary);
+  color: var(--text);
+}
+
+/* Доступні роботи
+   ---------------------------------------------------------------
+   Сітка на CSS columns: полотна різних пропорцій стоять природною
+   висотою, без обрізання й без дір. Пропорції кадру задає розмір
+   полотна (див. WorksSection.js), тому висота відома до завантаження
+   зображення й сітка не стрибає.
+
+   Stagger тут навмисно немає: у columns візуальний порядок не збігається
+   з порядком у DOM, і затримки по nth-child читались би як випадкові
+   спалахи, а не як хвиля. Поява — одна на всю сітку. */
+.works-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--border);
+  gap: 40px;
+}
+
+.works-title {
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.works-sub {
+  margin-top: 14px;
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+}
+
+.works-head-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.works-filters { display: flex; gap: 8px; align-items: center; }
+
+.works-filter {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  padding: 9px 16px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .works-filter:hover { border-color: var(--border-hero); color: var(--text); }
+}
+.works-filter.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.works-range {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  padding: 9px 16px;
+  border-left: 1px solid var(--border);
+  margin-left: 10px;
+  color: var(--text-meta);
+  white-space: nowrap;
+}
+
+/* Сітка, а не CSS columns. columns балансує колонки за висотою: на
+   трьох картках браузер клав дві в першу колонку, одну в другу, а третя
+   лишалася порожньою — праворуч зяяла діра на третину ширини. Це й
+   тримало homeCount на шести. Grid кладе рівно по картці в колонку
+   незалежно від їхньої висоти. */
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 44px;
+  margin-top: 56px;
+  /* Картки різної висоти (портрет / пейзаж) — вирівнюємо по верху
+     рядка, інакше grid розтягнув би кожну на висоту найвищої. */
+  align-items: start;
+}
+
+.works-card {
+  /* break-inside і inline-block були потрібні для columns; у grid
+     картка — звичайний елемент комірки. */
+  display: block;
+  margin-bottom: 62px;
+  color: var(--text);
+}
+
+.works-card-media {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+.works-card-media img { object-fit: cover; }
+
+/* Наведення — те саме, що на картках робіт у галереї. */
+.works-card-media::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0;
+  z-index: 2;
+  height: 1px;
+  width: var(--w, 0%);
+  background: var(--accent);
+  pointer-events: none;
+  transition: width var(--dur-base) var(--ease);
+}
+.works-card-media img { transform: scale(var(--s, 1)); transition: transform var(--dur-slow) var(--ease); }
+@media (hover: hover) and (pointer: fine) {
+  .works-card:hover { --s: 1.045; --w: 100%; }
+}
+
+.works-card-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+.works-card-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 20px;
+}
+.works-card-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.works-card-price {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 23px;
+  line-height: 1.1;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.works-card-meta {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  line-height: 1.6;
+  color: var(--text-meta);
+}
+.works-card.is-dim .works-card-title { color: var(--text-tertiary); }
+.works-card.is-dim .works-card-price { color: var(--text-faint); }
+.works-card.is-dim .works-card-meta { color: var(--text-faintest); }
+
+.works-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 34px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-meta);
+}
+.works-foot a {
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent-line);
+  padding-bottom: 4px;
+}
+
+@media (max-width: 920px) {
+  .works-head { flex-direction: column; align-items: flex-start; gap: 24px; }
+  .works-title { font-size: 36px; }
+  .works-head-right { width: 100%; }
+  /* Фільтри їдуть горизонтально, а не переносяться: так видно,
+     що список продовжується за краєм. */
+  .works-filters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .works-filters::-webkit-scrollbar { display: none; }
+  .works-grid { grid-template-columns: repeat(2, 1fr); gap: 0 28px; }
+}
+
+@media (max-width: 560px) {
+  .works-grid { grid-template-columns: 1fr; }
+  .works-card { margin-bottom: 44px; }
+  .works-card-title { font-size: 20px; }
+  .works-range { margin-left: 0; border-left: none; padding-left: 0; }
+}
+
+/* Сторінка художника: портрет ліворуч, текст праворуч.
+   Ширину рядка тримає .about-text (560px) — сама колонка ширша,
+   бо в ній ще живе сітка фактів. */
+.about-layout {
+  display: flex;
+  gap: 80px;
+  align-items: flex-start;
+  padding: 40px 0 130px;
+}
+
+.about-media { width: 470px; flex: none; }
+
+.about-photo {
+  /* position: relative — під <Image fill>, інакше кадр рахувався б
+     від найближчого позиційованого предка, а не від рамки. */
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+.about-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+.about-photo-caption {
+  margin-top: 14px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+.about-body { flex: 1; min-width: 0; }
+
+.about-body h1 {
+  font-size: 58px;
+  line-height: 1.02;
+  letter-spacing: -0.032em;
+}
+
+.about-text { margin-top: 22px; max-width: 560px; }
+
+.about-text p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+  margin: 0 0 18px;
+}
+
+.about-cta {
+  display: inline-block;
+  margin-top: 34px;
+  padding-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent-line);
+}
+
+@media (max-width: 920px) {
+  .about-layout { flex-direction: column; gap: 40px; }
+  .about-media { width: 100%; }
+  .about-photo { aspect-ratio: 4 / 3; }
+  .about-body h1 { font-size: 40px; }
+}
+
+/* Ключові факти на сторінці художника.
+   Рамки малюються праворуч і знизу кожної клітинки, а в останньої
+   в ряду правої нема — інакше по краю сітки пройшла б зайва лінія.
+   Тому набір правил :nth-child мусить мінятися разом із кількістю
+   колонок: на 920px їх дві, на 560px одна. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+  margin-top: 56px;
+}
+
+.fact {
+  padding: 26px 24px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.fact:nth-child(3n) { border-right: none; padding-right: 0; }
+.fact:nth-child(3n+1) { padding-left: 0; }
+
+.fact-num {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.fact-text {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.6;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 920px) {
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Скидаємо тричі-колонкові винятки й ставимо двічі-колонкові. */
+  .fact:nth-child(3n) { border-right: 1px solid var(--border); padding-right: 24px; }
+  .fact:nth-child(3n+1) { padding-left: 24px; }
+  .fact:nth-child(2n) { border-right: none; padding-right: 0; }
+  .fact:nth-child(2n+1) { padding-left: 0; }
+}
+
+@media (max-width: 560px) {
+  .facts { grid-template-columns: 1fr; }
+  .fact,
+  .fact:nth-child(3n),
+  .fact:nth-child(3n+1),
+  .fact:nth-child(2n),
+  .fact:nth-child(2n+1) {
+    padding: 20px 0;
+    border-right: none;
+  }
+  .fact-num { font-size: 44px; }
+}
+
+/* Блог */
+.blog-article { max-width: 760px; margin: 0 auto; }
+.about-text p { color: var(--text-body); }
+.blog-card-link { display: contents; }
+.blog-card-category {
+  display: inline-block; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-label);
+}
+.blog-card-desc { margin-top: -2px; }
+.home-blog-teaser { text-align: center; }
+
+.blog-meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  margin: 16px 0 24px; color: var(--text-meta); font-size: 13px;
+}
+.blog-meta-author { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.blog-meta-avatar {
+  position: relative; width: 32px; height: 32px; border-radius: 50%;
+  overflow: hidden; background: var(--bg-deep); flex: none;
+}
+.blog-meta-avatar img { object-fit: cover; }
+
+.blog-toc {
+  border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 32px;
+}
+.blog-toc summary { cursor: pointer; font-weight: 500; }
+.blog-toc nav ul { list-style: none; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.blog-toc nav li.blog-toc-sub { padding-left: 16px; }
+.blog-toc nav a { color: var(--text-tertiary); font-size: 14px; }
+
+.blog-content { max-width: 100%; }
+.blog-content h2 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 40px 0 16px;
+}
+.blog-content h3 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 1.5rem;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin: 28px 0 12px;
+}
+.blog-content p { margin-bottom: 16px; color: var(--text-body); }
+.blog-content ul, .blog-content ol { margin: 0 0 16px 20px; }
+.blog-content li { margin-bottom: 6px; color: var(--text-body); }
+/* rehype-autolink-headings загортає текст заголовка в <a>, щоб на
+   нього можна було послатися якорем. Глобальне a { color: accent }
+   робило з кожного H2 помаранчеве посилання — гасимо: якір лишається
+   робочим, але заголовок виглядає заголовком. */
+.blog-content h2 a,
+.blog-content h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+.blog-content a { text-decoration: underline; text-underline-offset: 3px; }
+.blog-content blockquote { border-left: 2px solid var(--border); padding-left: 16px; color: var(--text-secondary); margin: 0 0 16px; }
+.blog-content img { border-radius: 4px; margin: 24px 0; }
+.blog-content code { font-size: 0.9em; background: var(--bg-panel); padding: 2px 5px; border-radius: 3px; }
+.blog-content pre { background: var(--bg-panel); padding: 16px; border-radius: 6px; overflow-x: auto; margin-bottom: 16px; }
+.blog-content pre code { background: none; padding: 0; }
+.blog-content table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
+.blog-content th, .blog-content td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+
+.blog-faq { margin: 32px 0; display: flex; flex-direction: column; gap: 8px; }
+.blog-faq-item { border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+.blog-faq-item summary { cursor: pointer; font-weight: 500; }
+.blog-faq-item p { margin-top: 10px; color: var(--text-secondary); }
+
+/* Картки робіт: поява й наведення
+   ---------------------------------------------------------------
+   Поява — сходинками по 50 мс: сітка збирається хвилею зліва
+   направо, а не спалахує цілком. Затримки розписані до дванадцятої
+   картки, далі всі беруть останню: інакше карток більше за перелік
+   з'являлися б без затримки, тобто раніше за своїх сусідів (сьома
+   випереджала четверту).
+   Наведення — кадр повільно наближається в межах картки, знизу
+   проступає охряна риска. Обидва стани — змінні на контейнері,
+   тому шар із фото нічого не знає про :hover. */
+/* .works-card, а не .home-painting-card: другий клас лишився від
+   попередньої розмітки головної й у DOM не існує — анімація на ній
+   не спрацьовувала взагалі. */
+.thumb-card,
+.works-card {
+  animation: riseIn 600ms var(--ease) both;
+}
+.thumb-card:nth-child(1), .works-card:nth-child(1) { animation-delay: 0ms; }
+.thumb-card:nth-child(2), .works-card:nth-child(2) { animation-delay: 50ms; }
+.thumb-card:nth-child(3), .works-card:nth-child(3) { animation-delay: 100ms; }
+.thumb-card:nth-child(4), .works-card:nth-child(4) { animation-delay: 150ms; }
+.thumb-card:nth-child(5), .works-card:nth-child(5) { animation-delay: 200ms; }
+.thumb-card:nth-child(6), .works-card:nth-child(6) { animation-delay: 250ms; }
+.thumb-card:nth-child(7), .works-card:nth-child(7) { animation-delay: 300ms; }
+.thumb-card:nth-child(8), .works-card:nth-child(8) { animation-delay: 350ms; }
+.thumb-card:nth-child(9), .works-card:nth-child(9) { animation-delay: 400ms; }
+.thumb-card:nth-child(10), .works-card:nth-child(10) { animation-delay: 450ms; }
+.thumb-card:nth-child(11), .works-card:nth-child(11) { animation-delay: 500ms; }
+.thumb-card:nth-child(n+12), .works-card:nth-child(n+12) { animation-delay: 550ms; }
+
+.thumb {
+  position: relative;
+  overflow: hidden;
+}
+.thumb img {
+  transform: scale(var(--s, 1));
+  transition: transform var(--dur-slow) var(--ease);
+}
+.thumb::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0;
+  z-index: 2;
+  height: 1px;
+  width: var(--w, 0%);
+  background: var(--accent);
+  pointer-events: none;
+  transition: width var(--dur-base) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .thumb:hover { --s: 1.045; --w: 100%; }
+}
+
+/* Переходи між станами
+   ---------------------------------------------------------------
+   Правило звідси — CLAUDE.md, розділ «Движение»: рух, що відповідає
+   на дію людини, триває 150–250 мс. Тому все нижче — --dur-fast або
+   --dur-base, і всюди та сама крива --ease.
+
+   Появу діалогів малює @starting-style: браузер бере ці значення за
+   стартові в перший кадр після вставки вузла, і жодного стану в JS
+   для входу не потрібно. Де підтримки нема, елемент просто з'явиться
+   без переходу — решта поведінки не залежить від цього.
+   Вихід так не вміє: вузол мусить дожити до кінця анімації, і це
+   робить lib/useExitTransition.js (меню) та сама модалка. */
+
+/* 2. Мобільне меню. Панель непрозора й на весь екран, тож без переходу
+      читалася як перехід на іншу сторінку. */
+.mobile-menu {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+@starting-style {
+  .mobile-menu { opacity: 0; transform: translateY(-10px); }
+}
+/* Поки панель їде геть, вона ще накриває сторінку — клік у ці 240 мс
+   потрапляв би в неї, а не в те, що під нею. */
+.mobile-menu[data-closing="true"] {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+/* 3. Модалка заявки. Тло проступає, панель — разом із ним, з ледь
+      меншого масштабу. scale(0) не беремо: ніщо не виникає з нічого.
+      transform-origin лишається центральним — модалка не прив'язана
+      до кнопки, вона з'являється посеред екрана. */
+.modal-backdrop {
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease);
+}
+@starting-style {
+  .modal-backdrop { opacity: 0; }
+}
+.modal-backdrop[data-closing="true"] { opacity: 0; pointer-events: none; }
+
+.modal {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+@starting-style {
+  .modal { opacity: 0; transform: scale(0.96); }
+}
+.modal-backdrop[data-closing="true"] .modal {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+/* 1, 4, 5, 7, 9, 10 — поява вмісту на місці попереднього.
+   Спільні кадри: тільки прозорість і невеликий зсув, обидві
+   властивості на GPU. */
+@keyframes stateIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes stateFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 1. Зміна фільтра робіт. Сітка на CSS columns: при зміні набору
+      перебудовується вся розкладка, тож зсув тут був би метушнею —
+      лише прозорість.
+      Зараз фільтри сховані (жодна робота не належить циклу), правило
+      чекає на дані. */
+.works-grid { animation: stateFade var(--dur-base) var(--ease) both; }
+
+/* 4. Перемикання сітка ↔ переглядач: два різні макети в одному місці. */
+.gallery-view { animation: stateFade var(--dur-base) var(--ease) both; }
+
+/* 10. Зміна картини в переглядачі. Найкоротший перехід на сайті:
+       гортають десятками поспіль, і помітний рух почав би заважати.
+       Тільки прозорість, без зсуву — напрямок задає жест, а не кадр. */
+.viewer-img { animation: stateFade var(--dur-fast) var(--ease) both; }
+
+/* 5. Підтвердження надісланої заявки. */
+.form-sent { animation: stateIn var(--dur-base) var(--ease) both; }
+
+/* 7. Помилка форми. Рядок з'являється в кінці форми й розсуває її —
+      без переходу його легко не помітити. */
+.form-error { animation: stateIn var(--dur-base) var(--ease) both; }
+
+/* 9. Відповідь пошуку за номером у футері. Той самий випадок:
+      рядок додає футеру висоту. */
+.footer-search-msg { animation: stateIn var(--dur-base) var(--ease) both; }
+
+/* 6. Гармошки — зміст статті й FAQ. Нативний <details> розкривається
+      миттєво, виштовхуючи текст під собою. Анімувати саму висоту без
+      JS поки нема чим (::details-content ще не всюди), тож проступає
+      вміст: стрибок висоти лишається, але поява перестає бути
+      миготінням. Закриття браузер не дає перехопити зовсім. */
+.blog-toc[open] > *:not(summary),
+.blog-faq-item[open] > *:not(summary) {
+  animation: stateIn var(--dur-base) var(--ease) both;
+}
+.blog-toc summary,
+.blog-faq-item summary {
+  transition: color var(--dur-fast) var(--ease);
+}
+
+/* 8. Перемикання теми. Атрибут тримається рівно 240 мс (див.
+      ThemeToggle.js) — постійне правило сповільнило б кожен ховер
+      на сайті. Перелічені лише кольори: рух тут ні до чого, а
+      блок навмисно широкий, бо міняється вся сторінка одразу. */
+[data-theme-switching] *,
+[data-theme-switching] *::before,
+[data-theme-switching] *::after {
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease) !important;
+}
+
+/* Рух вимкнено в системі
+   ---------------------------------------------------------------
+   Єдиний блок на весь файл. Раніше їх було три, і найширший гасив
+   `transition` цілком — разом із кольором, тлом і прозорістю. Це
+   зайве: «менше руху» не означає «жодних переходів». Зміна стану
+   (кнопка потемніла, повідомлення проступило) допомагає зрозуміти,
+   що сталося, і має лишатися.
+
+   Тому гасимо саме рух:
+   - animation — усі keyframes (riseIn, пульс кільця);
+   - transform — і як кінцевий стан, і як ціль переходу: анімувати
+     нічого, тож transition на ньому стає беззмістовним сам собою;
+   - scroll-behavior — плавна прокрутка за якорями.
+
+   Переходи кольору, тла, рамки й opacity продовжують працювати.
+
+   Позиційних трансформів у файлі немає (перевірено: усі transform —
+   це scale і translate заради руху), тож `transform: none` нічого
+   не зсуває.
+
+   width і gap — теж рух, але не transform, і глобальним правилом їх
+   не відрізнити від службових. Тому вимикаємо поіменно нижче. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  /* Охряна риска під кадром росте через width. */
+  .thumb::after,
+  .works-card-media::after,
+  .cycle-img::after,
+  .cycle-card-img::after,
+  /* Проміжок між підписом і стрілкою в плашці героя. */
+  .hero-cta-label {
+    transition: none !important;
+  }
+}

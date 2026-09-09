@@ -1,0 +1,214 @@
+{
+  "nav": {
+    "home": "Strona główna",
+    "paintings": "Dostępne prace",
+    "cycles": "Cykle",
+    "authenticity": "Autentyczność",
+    "about": "O artyście",
+    "blog": "Blog",
+    "contacts": "Kontakt"
+  },
+  "cta": {
+    "choosePainting": "Wybierz obraz"
+  },
+  "hero": {
+    "tagline": "Malarstwo olejne"
+  },
+  "home": {
+    "processTitle": "Co stoi za każdym płótnem",
+    "process1": "Olej na płótnie — technika, która żyje wiekami",
+    "process2": "Miesiące pracy nad kolorem, światłem i fakturą",
+    "process3": "Lakier, sygnatura autora, certyfikat",
+    "stepsTitle": "Jak nabyć pracę",
+    "s1": "Wybór",
+    "s1d": "Wybierz pracę z dostępnych — wymiar, rok i cena są na karcie.",
+    "s2": "Zapytanie",
+    "s2d": "Napisz — potwierdzę dostępność i odpowiem na pytania w ciągu dnia.",
+    "s3": "Płatność",
+    "s3d": "Przelew lub płatność osobiście. Praca jest rezerwowana od razu.",
+    "s4": "Przekazanie",
+    "s4d": "Osobiście w pracowni w Warszawie lub wysyłka ubezpieczona z certyfikatem.",
+    "paintingsTitle": "Malarstwo",
+    "paintingsSub": "olej na płótnie",
+    "priceNote": "Oryginały w pracowni · ceny z VAT",
+    "filterAll": "Wszystkie",
+    "worksShown": "{shown} z {total} prac",
+    "allPaintings": "Zobacz wszystkie obrazy",
+    "ctaTitles": {
+      "painting": "Zainteresowała Cię praca? Napisz — odpowiem w ciągu dnia"
+    },
+    "soundOn": "włącz dźwięk",
+    "soundOff": "wyłącz dźwięk",
+    "blogTitle": "Blog",
+    "blogSubtitle": "O cyklach, technice malarstwa olejnego i kolekcjonerstwie",
+    "blogCta": "Przejdź do bloga"
+  },
+  "cycles": {
+    "intro": "Nie portfolio, lecz pięć światów. Każdy cykl to osobna przestrzeń.",
+    "meta": "5 cykli · ponad 4 000 płócien",
+    "canvases": "płócien",
+    "stanczykNote": "Stańczyk towarzyszy Kulikowi od dziesięcioleci — nadworny błazen, jedyny, któremu wolno mówić prawdę.",
+    "viewAll": "Zobacz wszystkie pięć cykli"
+  },
+  "authenticity": {
+    "title": "Każde płótno opuszcza pracownię podpisane.",
+    "lead": "Kupujesz bezpośrednio u malarza — bez galerii, bez aukcji, bez pośredników. Znika pytanie, które towarzyszy każdemu kupującemu na rynku wtórnym: czy ten obraz jest prawdziwy?",
+    "items": {
+      "direct": {
+        "label": "Bezpośrednio od artysty",
+        "text": "Żadnego pośrednika. Cena jest ceną pracowni."
+      },
+      "signature": {
+        "label": "Sygnatura",
+        "text": "Awers i krosno, do tego tytuł i rok odręcznie."
+      },
+      "certificate": {
+        "label": "Certyfikat autentyczności",
+        "text": "Ze zdjęciem pracy, wymiarami, rokiem i numerem w katalogu dzieł."
+      },
+      "handover": {
+        "label": "Przekazanie",
+        "text": "Osobiście w pracowni w Warszawie — albo wysyłka ubezpieczona."
+      }
+    },
+    "photoNote": "Każda praca jest fotografowana przed przekazaniem — razem z artystą i certyfikatem w jednym kadrze.",
+    "ctaPrimary": "Umów wizytę w pracowni",
+    "ctaSecondary": "Zobacz certyfikat"
+  },
+  "gallery": {
+    "title": "Malarstwo",
+    "askPrice": "Zapytaj o cenę",
+    "priceOnRequest": "Cena na zapytanie",
+    "order": "Nabyć",
+    "soldLabel": "Sprzedane",
+    "collectionLabel": "W kolekcji prywatnej",
+    "replyFast": "odpowiadam w ciągu dnia",
+    "prev": "poprz.",
+    "next": "nast.",
+    "thumbs": "pokaż miniatury",
+    "viewer": "pokaż pojedynczo",
+    "availableBadge": "dostępny"
+  },
+  "form": {
+    "title": "Zapytanie o cenę",
+    "name": "imię",
+    "email": "email",
+    "phone": "telefon",
+    "comment": "komentarz",
+    "send": "Wyślij zapytanie",
+    "sent": "Dziękuję! Odpowiem w ciągu dnia.",
+    "error": "Nie udało się wysłać. Zadzwoń lub napisz:",
+    "errors": {
+      "invalid_email": "Nieprawidłowy adres email",
+      "invalid_phone": "Nieprawidłowy numer telefonu",
+      "too_long": "Jedno z pól jest za długie",
+      "missing_fields": "Podaj imię i email",
+      "rate_limit": "Zbyt wiele zgłoszeń z tego adresu. Spróbuj później."
+    },
+    "close": "Zamknij",
+    "paintingPrefill": "Dzień dobry! Interesuje mnie obraz „{title}\" ({code}, {size} cm). "
+  },
+  "about": {
+    "title": "O mnie",
+    "photoCaption": "Pracownia w Warszawie",
+    "ctaWorks": "Zobacz dostępne prace",
+    "facts": {
+      "f1": {
+        "num": "1991",
+        "text": "Pierwsza wystawa indywidualna w gmachu Sejmu"
+      },
+      "f2": {
+        "num": "4 000",
+        "text": "Prac powstało od przyjazdu do Polski"
+      },
+      "f3": {
+        "num": "700",
+        "text": "Płócien do Bułhakowa, 90 w polskim wydaniu"
+      },
+      "f4": {
+        "num": "2001",
+        "text": "Etykieta do Vino della Pace, winnica Cormons"
+      },
+      "f5": {
+        "num": "2006",
+        "text": "Poncjusz Piłat ilustruje artykuł w The Lancet"
+      },
+      "f6": {
+        "num": "4",
+        "text": "Miasta wystaw indywidualnych: Warszawa, Łódź, Sopot, Wiedeń"
+      }
+    }
+  },
+  "contacts": {
+    "title": "Kontakt",
+    "sub": "Napisz o dowolnej pracy — lub umów wizytę w pracowni w Warszawie."
+  },
+  "footer": {
+    "rights": "Iwan Kulik",
+    "madeBy": "Wykonanie strony:"
+  },
+  "theme": "Motyw",
+  "themeDark": "Ciemny",
+  "themeLight": "Jasny",
+  "menu": "Menu",
+  "scrollTop": "Do góry",
+  "notFound": {
+    "title": "Nie znaleziono strony",
+    "text": "Adres mógł się zmienić lub strona została usunięta.",
+    "home": "Strona główna",
+    "works": "Dostępne prace",
+    "blog": "Blog"
+  },
+  "name": "Iwan Kulik",
+  "search": {
+    "label": "Znajdź pracę po numerze",
+    "placeholder": "К-001",
+    "action": "Znajdź",
+    "notFound": "Nie ma pracy o numerze",
+    "badFormat": "Wpisz numer w formacie К-001."
+  },
+  "blog": {
+    "title": "Blog",
+    "allCategories": "Wszystkie kategorie",
+    "categoryAll": "Wszystkie",
+    "toc": "Spis treści",
+    "related": "Podobne artykuły",
+    "publishedOn": "Opublikowano",
+    "updatedOn": "Zaktualizowano",
+    "minRead": "min czytania",
+    "noPosts": "W tej kategorii nie ma jeszcze artykułów.",
+    "readMore": "Czytaj →"
+  },
+  "seo": {
+    "home": {
+      "title": "Iwan Kulik — malarstwo olejne",
+      "description": "Iwan Kulik — malarz olejny, w Warszawie od 1990 roku. Ponad 4 000 płócien w pięciu cyklach tematycznych. Oryginały bezpośrednio od autora."
+    },
+    "paintings": {
+      "title": "Obrazy olejne Iwana Kulika",
+      "description": "Oryginalne obrazy olejne Iwana Kulika — cykle tematyczne, portrety, malarstwo sztalugowe. Zakup bezpośrednio u artysty, certyfikat autentyczności."
+    },
+    "cycles": {
+      "title": "Cykle tematyczne — Iwan Kulik",
+      "description": "Pięć cykli tematycznych Iwana Kulika: Mistrz i Małgorzata, Don Kichot, Folwark zwierzęcy, Stańczyk, Krytyka władzy.",
+      "itemDescription": "{title} — cykl obrazów olejnych Iwana Kulika."
+    },
+    "about": {
+      "title": "O mnie — Iwan Kulik, artysta",
+      "description": "Artysta Iwan Kulik o sobie i swoim podejściu do malarstwa olejnego. Cykle tematyczne, portrety. Warszawa."
+    },
+    "contacts": {
+      "title": "Kontakt — Iwan Kulik",
+      "description": "Skontaktuj się z Iwanem Kulikiem w sprawie dostępnych prac lub wizyty w pracowni w Warszawie."
+    },
+    "blog": {
+      "title": "Blog — Iwan Kulik",
+      "description": "Dziennik pracowni Iwana Kulika: tematyczne cykle płócien, technika malarstwa olejnego, zakup oryginałów bezpośrednio u artysty i opieka nad obrazem.",
+      "categories": {
+        "cycles": "O tematycznych seriach płócien Iwana Kulika: jak rodzi się cykl, dlaczego bohaterowie wracają z obrazu na obraz i co spaja setki prac w całość.",
+        "technique": "Jak zbudowany jest obraz olejny: grunt, podmalówka, warstwy farby, werniks. Materiały pracowni i powody, dla których ta technika trwa wieki.",
+        "collecting": "Zakup oryginału bezpośrednio u artysty: certyfikat autentyczności, cena, dostawa. I opieka w domu — światło, wilgotność, błędy nie do naprawienia."
+      }
+    }
+  }
+}

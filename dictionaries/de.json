@@ -1,0 +1,214 @@
+{
+  "nav": {
+    "home": "Startseite",
+    "paintings": "Verfügbare Werke",
+    "cycles": "Zyklen",
+    "authenticity": "Echtheit",
+    "about": "Über den Künstler",
+    "blog": "Blog",
+    "contacts": "Kontakt"
+  },
+  "cta": {
+    "choosePainting": "Ein Bild wählen"
+  },
+  "hero": {
+    "tagline": "Ölmalerei"
+  },
+  "home": {
+    "processTitle": "Was hinter jeder Leinwand steht",
+    "process1": "Öl auf Leinwand — eine Technik, die Jahrhunderte überdauert",
+    "process2": "Monate Arbeit an Farbe, Licht und Textur",
+    "process3": "Firnis, Signatur des Künstlers, Zertifikat",
+    "stepsTitle": "Wie Sie ein Werk erwerben",
+    "s1": "Auswahl",
+    "s1d": "Wählen Sie ein verfügbares Werk — Maße, Jahr und Preis stehen auf der Karte.",
+    "s2": "Anfrage",
+    "s2d": "Schreiben Sie mir — ich bestätige die Verfügbarkeit und antworte innerhalb eines Tages.",
+    "s3": "Zahlung",
+    "s3d": "Überweisung oder Zahlung vor Ort. Das Werk wird sofort reserviert.",
+    "s4": "Übergabe",
+    "s4d": "Persönlich im Atelier in Warschau oder versicherter Versand mit Zertifikat.",
+    "paintingsTitle": "Malerei",
+    "paintingsSub": "Öl auf Leinwand",
+    "priceNote": "Originale im Atelier · Preise inkl. MwSt.",
+    "filterAll": "Alle",
+    "worksShown": "{shown} von {total} Werken",
+    "allPaintings": "Alle Gemälde ansehen",
+    "ctaTitles": {
+      "painting": "Interessiert Sie ein Werk? Schreiben Sie — ich antworte innerhalb eines Tages"
+    },
+    "soundOn": "Ton einschalten",
+    "soundOff": "Ton ausschalten",
+    "blogTitle": "Journal",
+    "blogSubtitle": "Über Zyklen, Ölmalerei-Technik und Sammeln",
+    "blogCta": "Zum Blog"
+  },
+  "cycles": {
+    "intro": "Nicht ein Portfolio, sondern fünf Welten. Jeder Zyklus ist ein eigener Raum.",
+    "meta": "5 Zyklen · über 4 000 Leinwände",
+    "canvases": "Leinwände",
+    "stanczykNote": "Stańczyk begleitet Kulik seit Jahrzehnten — der Hofnarr, der als Einziger die Wahrheit sagen darf.",
+    "viewAll": "Alle fünf Zyklen ansehen"
+  },
+  "authenticity": {
+    "title": "Jede Leinwand verlässt das Atelier signiert.",
+    "lead": "Sie kaufen direkt beim Maler — ohne Galerie, ohne Auktion, ohne Zwischenhändler. Damit entfällt die Frage, die auf dem Sekundärmarkt jeden Käufer begleitet: Ist das Bild echt?",
+    "items": {
+      "direct": {
+        "label": "Direkt vom Künstler",
+        "text": "Kein Händler dazwischen. Der Preis ist der Atelierpreis."
+      },
+      "signature": {
+        "label": "Signatur",
+        "text": "Vorderseite und Keilrahmen, dazu Titel und Jahr handschriftlich."
+      },
+      "certificate": {
+        "label": "Echtheitszertifikat",
+        "text": "Mit Foto des Werks, Maßen, Jahr und Nummer im Werkverzeichnis."
+      },
+      "handover": {
+        "label": "Übergabe",
+        "text": "Persönlich im Atelier in Warschau — oder versichert versandt."
+      }
+    },
+    "photoNote": "Jedes Werk wird vor der Übergabe fotografiert — mit dem Künstler und dem Zertifikat im selben Bild.",
+    "ctaPrimary": "Atelierbesuch vereinbaren",
+    "ctaSecondary": "Zertifikat ansehen"
+  },
+  "gallery": {
+    "title": "Malerei",
+    "askPrice": "Preis anfragen",
+    "priceOnRequest": "Preis auf Anfrage",
+    "order": "Erwerben",
+    "soldLabel": "Verkauft",
+    "collectionLabel": "In Privatsammlung",
+    "replyFast": "Antwort innerhalb eines Tages",
+    "prev": "zurück",
+    "next": "weiter",
+    "thumbs": "Miniaturen zeigen",
+    "viewer": "einzeln zeigen",
+    "availableBadge": "verfügbar"
+  },
+  "form": {
+    "title": "Preisanfrage",
+    "name": "Name",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "comment": "Kommentar",
+    "send": "Anfrage senden",
+    "sent": "Danke! Ich antworte innerhalb eines Tages.",
+    "error": "Senden fehlgeschlagen. Bitte anrufen oder schreiben:",
+    "errors": {
+      "invalid_email": "Ungültige E-Mail-Adresse",
+      "invalid_phone": "Ungültige Telefonnummer",
+      "too_long": "Eines der Felder ist zu lang",
+      "missing_fields": "Bitte Name und E-Mail angeben",
+      "rate_limit": "Zu viele Anfragen von dieser Adresse. Bitte später erneut versuchen."
+    },
+    "close": "Schließen",
+    "paintingPrefill": "Guten Tag! Ich interessiere mich für das Gemälde „{title}\" ({code}, {size} cm). "
+  },
+  "about": {
+    "title": "Über mich",
+    "photoCaption": "Atelier in Warschau",
+    "ctaWorks": "Verfügbare Werke ansehen",
+    "facts": {
+      "f1": {
+        "num": "1991",
+        "text": "Erste Einzelausstellung im Gebäude des polnischen Sejm"
+      },
+      "f2": {
+        "num": "4 000",
+        "text": "Werke seit der Übersiedlung nach Polen"
+      },
+      "f3": {
+        "num": "700",
+        "text": "Leinwände zu Bulgakow, 90 in der polnischen Ausgabe"
+      },
+      "f4": {
+        "num": "2001",
+        "text": "Etikett für Vino della Pace, Weingut Cormons"
+      },
+      "f5": {
+        "num": "2006",
+        "text": "Pontius Pilatus illustriert einen Beitrag in The Lancet"
+      },
+      "f6": {
+        "num": "4",
+        "text": "Städte mit Einzelausstellungen: Warschau, Łódź, Sopot, Wien"
+      }
+    }
+  },
+  "contacts": {
+    "title": "Kontakt",
+    "sub": "Schreiben Sie zu jedem Werk — oder vereinbaren Sie einen Atelierbesuch in Warschau."
+  },
+  "footer": {
+    "rights": "Iwan Kulik",
+    "madeBy": "Webentwicklung:"
+  },
+  "theme": "Thema",
+  "themeDark": "Dunkel",
+  "themeLight": "Hell",
+  "menu": "Menü",
+  "scrollTop": "Nach oben",
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "text": "Die Adresse hat sich möglicherweise geändert oder die Seite wurde entfernt.",
+    "home": "Zur Startseite",
+    "works": "Verfügbare Werke",
+    "blog": "Blog"
+  },
+  "name": "Iwan Kulik",
+  "search": {
+    "label": "Arbeit nach Nummer finden",
+    "placeholder": "К-001",
+    "action": "Finden",
+    "notFound": "Keine Arbeit mit der Nummer",
+    "badFormat": "Nummer im Format К-001 eingeben."
+  },
+  "blog": {
+    "title": "Blog",
+    "allCategories": "Alle Kategorien",
+    "categoryAll": "Alle",
+    "toc": "Inhaltsverzeichnis",
+    "related": "Ähnliche Beiträge",
+    "publishedOn": "Veröffentlicht",
+    "updatedOn": "Aktualisiert",
+    "minRead": "Min. Lesezeit",
+    "noPosts": "In dieser Kategorie gibt es noch keine Beiträge.",
+    "readMore": "Lesen →"
+  },
+  "seo": {
+    "home": {
+      "title": "Iwan Kulik — Ölmalerei",
+      "description": "Iwan Kulik — Ölmaler, seit 1990 in Warschau. Über 4 000 Leinwände in fünf thematischen Zyklen. Originale direkt vom Künstler."
+    },
+    "paintings": {
+      "title": "Ölgemälde von Iwan Kulik",
+      "description": "Original-Ölgemälde von Iwan Kulik — thematische Zyklen, Porträts, Staffeleimalerei. Direkt vom Künstler kaufen, mit Echtheitszertifikat."
+    },
+    "cycles": {
+      "title": "Thematische Zyklen — Iwan Kulik",
+      "description": "Fünf thematische Zyklen von Iwan Kulik: Der Meister und Margarita, Don Quijote, Farm der Tiere, Stańczyk, Kritik der Macht.",
+      "itemDescription": "{title} — ein Zyklus von Ölgemälden von Iwan Kulik."
+    },
+    "about": {
+      "title": "Über mich — Iwan Kulik, Künstler",
+      "description": "Künstler Iwan Kulik über sich und seinen Zugang zur Ölmalerei. Thematische Zyklen, Porträts. Warschau."
+    },
+    "contacts": {
+      "title": "Kontakt — Iwan Kulik",
+      "description": "Kontaktieren Sie Iwan Kulik zu verfügbaren Werken oder für einen Atelierbesuch in Warschau."
+    },
+    "blog": {
+      "title": "Blog — Iwan Kulik",
+      "description": "Das Journal der Werkstatt von Iwan Kulik: thematische Zyklen, die Technik der Ölmalerei, der Kauf von Originalen beim Künstler und die Pflege der Bilder.",
+      "categories": {
+        "cycles": "Über die thematischen Serien von Iwan Kulik: wie ein Zyklus entsteht, warum dieselben Figuren wiederkehren und was Hunderte Leinwände zusammenhält.",
+        "technique": "Wie ein Ölgemälde aufgebaut ist: Grundierung, Untermalung, Farbschichten, Firnis. Materialien der Werkstatt und warum diese Technik Jahrhunderte hält.",
+        "collecting": "Ein Original direkt beim Künstler kaufen: Echtheitszertifikat, Preis, Versand. Und die Pflege zu Hause — Licht, Feuchtigkeit, Fehler ohne Rückweg."
+      }
+    }
+  }
+}

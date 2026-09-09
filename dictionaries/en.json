@@ -1,0 +1,214 @@
+{
+  "nav": {
+    "home": "Home",
+    "paintings": "Available Works",
+    "cycles": "Cycles",
+    "authenticity": "Authenticity",
+    "about": "About the Artist",
+    "blog": "Blog",
+    "contacts": "Contact"
+  },
+  "cta": {
+    "choosePainting": "Choose a painting"
+  },
+  "hero": {
+    "tagline": "Oil Painting"
+  },
+  "home": {
+    "processTitle": "What Stands Behind Every Canvas",
+    "process1": "Oil on canvas — a technique that lives for centuries",
+    "process2": "Months of work on colour, light and texture",
+    "process3": "Varnish, the artist's signature, certificate",
+    "stepsTitle": "How to Acquire a Work",
+    "s1": "Choice",
+    "s1d": "Pick a work from those available — size, year and price are on the card.",
+    "s2": "Enquiry",
+    "s2d": "Write to me — I confirm availability and answer questions within a day.",
+    "s3": "Payment",
+    "s3d": "Bank transfer or payment in person. The work is reserved immediately.",
+    "s4": "Handover",
+    "s4d": "In person at the Warsaw studio or insured shipping with the certificate.",
+    "paintingsTitle": "Paintings",
+    "paintingsSub": "oil on canvas",
+    "priceNote": "Originals in the studio · prices incl. VAT",
+    "filterAll": "All",
+    "worksShown": "{shown} of {total} works",
+    "allPaintings": "View all paintings",
+    "ctaTitles": {
+      "painting": "Interested in a work? Write to me — I reply within a day"
+    },
+    "soundOn": "turn on sound",
+    "soundOff": "turn off sound",
+    "blogTitle": "Journal",
+    "blogSubtitle": "On cycles, oil painting technique and collecting",
+    "blogCta": "Go to blog"
+  },
+  "cycles": {
+    "intro": "Not a portfolio, but five worlds. Each cycle is its own space.",
+    "meta": "5 cycles · over 4,000 canvases",
+    "canvases": "canvases",
+    "stanczykNote": "Stańczyk has accompanied Kulik for decades — the court jester, the only one allowed to speak the truth.",
+    "viewAll": "View all five cycles"
+  },
+  "authenticity": {
+    "title": "Every canvas leaves the studio signed.",
+    "lead": "You buy directly from the artist — no gallery, no auction, no middlemen. This removes the question that follows every buyer on the secondary market: is this painting genuine?",
+    "items": {
+      "direct": {
+        "label": "Direct from the artist",
+        "text": "No dealer in between. The price is the studio price."
+      },
+      "signature": {
+        "label": "Signature",
+        "text": "Front and stretcher, plus title and year handwritten."
+      },
+      "certificate": {
+        "label": "Certificate of authenticity",
+        "text": "With a photo of the work, dimensions, year and catalogue number."
+      },
+      "handover": {
+        "label": "Handover",
+        "text": "In person at the Warsaw studio — or insured shipping."
+      }
+    },
+    "photoNote": "Every work is photographed before handover — with the artist and the certificate in the same frame.",
+    "ctaPrimary": "Arrange a studio visit",
+    "ctaSecondary": "View certificate"
+  },
+  "gallery": {
+    "title": "Paintings",
+    "askPrice": "Ask the price",
+    "priceOnRequest": "Price on request",
+    "order": "Acquire",
+    "soldLabel": "Sold",
+    "collectionLabel": "In a private collection",
+    "replyFast": "I reply within a day",
+    "prev": "prev",
+    "next": "next",
+    "thumbs": "show thumbnails",
+    "viewer": "view one by one",
+    "availableBadge": "available"
+  },
+  "form": {
+    "title": "Price request",
+    "name": "name",
+    "email": "email",
+    "phone": "phone",
+    "comment": "comment",
+    "send": "Send request",
+    "sent": "Thank you! I will reply within a day.",
+    "error": "Sending failed. Please call or email:",
+    "errors": {
+      "invalid_email": "Invalid email address",
+      "invalid_phone": "Invalid phone number",
+      "too_long": "One of the fields is too long",
+      "missing_fields": "Please fill in your name and email",
+      "rate_limit": "Too many requests from this address. Please try again later."
+    },
+    "close": "Close",
+    "paintingPrefill": "Hello! I'm interested in the painting \"{title}\" ({code}, {size} cm). "
+  },
+  "about": {
+    "title": "About",
+    "photoCaption": "Studio in Warsaw",
+    "ctaWorks": "View available works",
+    "facts": {
+      "f1": {
+        "num": "1991",
+        "text": "First solo exhibition in the Polish Sejm building"
+      },
+      "f2": {
+        "num": "4,000",
+        "text": "Works created since moving to Poland"
+      },
+      "f3": {
+        "num": "700",
+        "text": "Canvases on Bulgakov, 90 in the Polish edition"
+      },
+      "f4": {
+        "num": "2001",
+        "text": "Label for Vino della Pace, Cormons winery"
+      },
+      "f5": {
+        "num": "2006",
+        "text": "Pontius Pilate illustrates a paper in The Lancet"
+      },
+      "f6": {
+        "num": "4",
+        "text": "Cities with solo shows: Warsaw, Łódź, Sopot, Vienna"
+      }
+    }
+  },
+  "contacts": {
+    "title": "Contact",
+    "sub": "Write about any work — or arrange a visit to the Warsaw studio."
+  },
+  "footer": {
+    "rights": "Iwan Kulik",
+    "madeBy": "Website by:"
+  },
+  "theme": "Theme",
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "menu": "Menu",
+  "scrollTop": "Back to top",
+  "notFound": {
+    "title": "Page not found",
+    "text": "The address may have changed, or the page was removed.",
+    "home": "Go to homepage",
+    "works": "Available works",
+    "blog": "Blog"
+  },
+  "name": "Iwan Kulik",
+  "search": {
+    "label": "Find a work by its number",
+    "placeholder": "К-001",
+    "action": "Find",
+    "notFound": "No work with the number",
+    "badFormat": "Enter the number as К-001."
+  },
+  "blog": {
+    "title": "Blog",
+    "allCategories": "All categories",
+    "categoryAll": "All",
+    "toc": "Table of contents",
+    "related": "Related posts",
+    "publishedOn": "Published",
+    "updatedOn": "Updated",
+    "minRead": "min read",
+    "noPosts": "No posts in this category yet.",
+    "readMore": "Read →"
+  },
+  "seo": {
+    "home": {
+      "title": "Iwan Kulik — Oil Paintings",
+      "description": "Iwan Kulik — oil painter, based in Warsaw since 1990. Over 4,000 canvases in five thematic cycles. Originals directly from the artist."
+    },
+    "paintings": {
+      "title": "Oil Paintings by Iwan Kulik",
+      "description": "Original oil paintings by Iwan Kulik — thematic cycles, portraits, easel painting. Buy directly from the artist, certificate of authenticity."
+    },
+    "cycles": {
+      "title": "Thematic Cycles — Iwan Kulik",
+      "description": "Five thematic cycles by Iwan Kulik: The Master and Margarita, Don Quixote, Animal Farm, Stańczyk, Critique of Power.",
+      "itemDescription": "{title} — a cycle of oil paintings by Iwan Kulik."
+    },
+    "about": {
+      "title": "About Iwan Kulik, Artist",
+      "description": "Iwan Kulik on his background and his approach to oil painting. Thematic cycles, portraits. Based in Warsaw."
+    },
+    "contacts": {
+      "title": "Contact Iwan Kulik",
+      "description": "Contact Iwan Kulik about available works or to arrange a visit to the Warsaw studio."
+    },
+    "blog": {
+      "title": "Blog — Iwan Kulik",
+      "description": "The journal of Iwan Kulik's studio: thematic cycles of canvases, the craft of oil painting, buying originals direct from the artist and caring for them.",
+      "categories": {
+        "cycles": "On Iwan Kulik's thematic series: how a cycle begins, why the same figures return from canvas to canvas, and what holds hundreds of works together.",
+        "technique": "How an oil painting is built: ground, underpainting, layers of paint, varnish. Studio materials and the reasons this craft has lasted for centuries.",
+        "collecting": "Buying an original direct from the artist: certificate of authenticity, price, delivery. And care at home — light, humidity, the mistakes to avoid."
+      }
+    }
+  }
+}

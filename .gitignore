@@ -1,0 +1,33 @@
+# Залежності та збірка
+node_modules
+.next
+out
+.netlify
+.vercel
+
+# Змінні оточення. .env.example — навпаки, має бути в репо як зразок.
+.env*
+!.env.example
+
+# Локальне сховище (lib/store.js, fs-драйвер). На проді дані живуть у
+# Netlify Blobs, тут — лише робоча копія розробника: data.json, логи,
+# лічильники rate-limit, фінгерпринти пристроїв, локальні завантаження.
+# Саму папку лишаємо в репо через .gitkeep — код створює її сам
+# (lib/atomicWrite.js), але структура має бути видима.
+content/*
+!content/.gitkeep
+
+# Легасі-шлях завантажень; на проді файли йдуть у блоби.
+public/uploads/
+
+# Особисті налаштування Claude Code (спільні, якщо з'являться, — у
+# .claude/settings.json, він не ігнорується).
+.claude/settings.local.json
+
+# Сміття
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+*.corrupt-*
