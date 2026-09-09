@@ -50,6 +50,6 @@ export default function proxy(request) {
 
 export const config = {
   matcher: [
-    "/((?!api|admin|_next|assets|uploads|og|blog/|favicon.ico|sitemap.xml|image-sitemap.xml|robots.txt|manifest.webmanifest|icon.svg|apple-icon.png|icon-512.png).*)",
+    "/((?!api|admin|_next|assets|uploads|og|blog/|favicon.ico|sitemap.xml|image-sitemap.xml|robots.txt|manifest.webmanifest|icon.png|apple-icon.png|icon-192.png|icon-512.png|icon-maskable-512.png).*)",
   ],
 };
