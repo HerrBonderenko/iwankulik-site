@@ -48,8 +48,19 @@ export default function proxy(request) {
   return NextResponse.redirect(url);
 }
 
+// Проксі чіпає лише сторінки: усе, що нижче, воно пропускає повз себе.
+//
+// Іконки раніше були перелічені поіменно (favicon.ico, apple-icon.png,
+// icon-512.png…) — і кожен новий файл доводилося дописувати сюди руками,
+// інакше запит до нього ловив редірект локалі. Замість списку — правило
+// за розширенням: будь-який файл-зображення в корені.
+//
+// `[^/]+` не переходить через слеш, тож правило стосується саме кореня:
+// /icon-192.png воно виключає, а /uk/щось.png — ні (такого в нас і нема,
+// але межу краще тримати вузькою). Каталоги з картинками (assets, og,
+// uploads) виключені окремо вище — вони мають вкладеність.
 export const config = {
   matcher: [
-    "/((?!api|admin|_next|assets|uploads|og|blog/|favicon.ico|sitemap.xml|image-sitemap.xml|robots.txt|manifest.webmanifest|icon.png|apple-icon.png|icon-192.png|icon-512.png|icon-maskable-512.png).*)",
+    "/((?!api|admin|_next|assets|uploads|og|blog/|sitemap.xml|image-sitemap.xml|robots.txt|manifest.webmanifest|[^/]+\\.(?:png|ico|svg|webp|jpe?g|avif|gif)$).*)",
   ],
 };
