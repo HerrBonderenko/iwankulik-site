@@ -1,7 +1,7 @@
 import { getDict, locales, pick } from "@/lib/i18n";
 import Gallery from "@/components/Gallery";
 import { getData } from "@/lib/store";
-import { buildMetadata, SITE_URL } from "@/lib/seo";
+import { buildMetadata } from "@/lib/seo";
 import { collectionPageSchema, breadcrumbSchema, productSchema } from "@/lib/schema";
 import JsonLd from "@/components/JsonLd";
 
@@ -18,7 +18,9 @@ export async function generateMetadata({ params }) {
     title: t.seo.paintings.title,
     description: t.seo.paintings.description,
     siteName: t.name,
-    image: { url: `${SITE_URL}/og/zhyvopys.jpg` },
+    // Своєї og-картинки в цієї сторінки більше нема: /og/zhyvopys.jpg була
+    // фотографією розпису зі старого проєкту й пішла разом із рештою.
+    // Без image buildMetadata підставить спільну /og/default.jpg.
   });
 }
 
