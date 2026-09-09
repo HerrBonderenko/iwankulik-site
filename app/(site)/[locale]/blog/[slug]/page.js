@@ -39,6 +39,11 @@ export function generateStaticParams() {
       params.push({ locale, slug });
     }
   }
+  // ТИМЧАСОВО: діагностика 404 на проді. Прибрати після з'ясування.
+  console.log(
+    `[build-diag] blog/[slug]: cwd=${process.cwd()} locales=${locales.length} ` +
+      `→ ${params.length} шляхів; приклад=${params[0] ? `${params[0].locale}/${params[0].slug}` : "НЕМАЄ"}`
+  );
   return params;
 }
 
