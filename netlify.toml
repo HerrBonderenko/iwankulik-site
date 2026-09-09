@@ -12,3 +12,16 @@
 # затягувати його в бандл функції, а покласти як є з node_modules.
 [functions]
   external_node_modules = ["sharp"]
+
+# Файли з public/ віддає статичний шар Netlify, а не Next.js Server
+# Handler — headers() із next.config.mjs їх не зачіпає, тільки цей файл.
+# Типово Netlify ставить на них `public,max-age=0,must-revalidate`, і це
+# ламало Netlify Image CDN: TTL перетворення успадковується від джерела,
+# тож /_next/image щоразу віддавав `Cache-Status: fwd=miss` і заново
+# стискав картинку (~500 мс до першого байта на кожен показ героя).
+# Імена в /assets/ фіксовані й змінюються лише разом із деплоєм — той
+# самий рік, що вже стоїть для Vercel у vercel.json.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

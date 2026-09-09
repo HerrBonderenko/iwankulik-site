@@ -16,12 +16,35 @@ import { personSchema } from "@/lib/schema";
 // гарнітурою, а не за роллю: --font-display/--font-body збирає з них
 // globals.css разом із фолбеками (var(--font-display) не може посилатися
 // сам на себе — :root і <html> це один елемент, вийшов би цикл).
+// Cormorant лишається тільки в 300 — у globals.css кожне правило з
+// var(--font-display) задає саме цю вагу. 400 і 500 оголошувалися, але
+// не малювалися ніде, а next/font усе одно клав їх у <head> як
+// <link rel=preload as=font> з високим пріоритетом. Разом із курсивом
+// нижче це знімає з критичного шляху 136 КБ: було 8 preload на 254 КБ,
+// лишилося 5 на 118 КБ (заміряно по .next/static/media після збірки).
 const cormorant = Cormorant_Garamond({
   subsets: ["latin", "latin-ext", "cyrillic"],
-  weight: ["300", "400", "500"],
-  style: ["normal", "italic"],
+  weight: ["300"],
   variable: "--font-cormorant",
   display: "swap",
+});
+
+// Курсив Cormorant — другим викликом і навмисно без preload. Ним набрані
+// лише .cycles-intro і .cycles-note, обидві нижче першого екрана, а
+// preload від next/font кладе шрифт у <head> з високим пріоритетом і
+// відбирає канал у героя рівно тоді, коли той вантажиться. Без preload
+// браузер дійде до нього по CSS уже після LCP.
+// Окремий виклик потрібен саме тому, що preload у next/font — прапорець
+// на все оголошення, по style його не розділити. У CSS нічого міняти не
+// довелося: обидва виклики дають ту саму родину "Cormorant Garamond", і
+// font-style: italic сам вибирає накреслення звідси.
+const cormorantItalic = Cormorant_Garamond({
+  subsets: ["latin", "latin-ext", "cyrillic"],
+  weight: ["300"],
+  style: ["italic"],
+  variable: "--font-cormorant-italic",
+  display: "swap",
+  preload: false,
 });
 
 const archivo = Archivo({
@@ -77,7 +100,7 @@ export default async function LocaleLayout({ children, params }) {
   // знаходитись із будь-якої сторінки.
   const works = buildWorkIndex({ paintings });
   return (
-    <html lang={locale} data-theme="dark" className={`${cormorant.variable} ${archivo.variable}`} suppressHydrationWarning>
+    <html lang={locale} data-theme="dark" className={`${cormorant.variable} ${cormorantItalic.variable} ${archivo.variable}`} suppressHydrationWarning>
       <body>
         {/* Тема ставиться до першої відмальовки, інакше сторінка
             блимне темним перед тим, як застосується збережений

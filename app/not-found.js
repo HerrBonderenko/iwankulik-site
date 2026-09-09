@@ -24,9 +24,13 @@ import NotFoundPage from "@/components/NotFoundPage";
 //
 // Кореневий макет для цього файлу Next генерує сам, тож шрифти, тему й
 // стилі підключаємо тут.
+// Cormorant лишається тільки в 300 — у globals.css кожне правило з
+// var(--font-display) задає саме цю вагу (див. той самий виклик у
+// (site)/[locale]/layout.js). 400 і 500 оголошувалися, але не
+// малювалися ніде, а next/font усе одно клав їх у preload нарівні з рештою.
 const cormorant = Cormorant_Garamond({
   subsets: ["latin", "latin-ext", "cyrillic"],
-  weight: ["300", "400", "500"],
+  weight: ["300"],
   variable: "--font-cormorant",
   display: "swap",
 });

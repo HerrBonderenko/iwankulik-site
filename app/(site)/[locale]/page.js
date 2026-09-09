@@ -43,7 +43,28 @@ export default async function Home({ params }) {
           </div>
         )}
         <div className="hero-photo">
-          <Image src={hero.img} alt={t.hero.tagline} fill priority sizes="100vw" />
+          {/* LCP-елемент сторінки. priority у Next 16 позначено застарілим —
+              він лише вставляє <link rel=preload>, а fetchpriority не ставить,
+              тож браузер тягнув героя з пріоритетом Low позаду восьми шрифтів
+              (виміряно: Load Delay 1.1 s). preload + fetchPriority="high" дають
+              і ранній preload, і високий пріоритет — обидва потрапляють і в
+              <link>, і в <img>.
+              sizes рахуємо по факту: на телефоні фото на всю ширину, на
+              десктопі в .hero є padding 20px з кожного боку, а коли грає
+              відео — ще й колонка 420px + gap 20px зліва. */}
+          <Image
+            src={hero.img}
+            alt={t.hero.tagline}
+            fill
+            preload
+            fetchPriority="high"
+            quality={60}
+            sizes={
+              heroVideo
+                ? "(max-width: 920px) 100vw, calc(100vw - 480px)"
+                : "(max-width: 920px) 100vw, calc(100vw - 40px)"
+            }
+          />
           <div className="hero-text">
             {/* Заголовок і заклик — одна клікабельна плашка, а не два
                 сусідні елементи. h1 усередині посилання валідний: a може

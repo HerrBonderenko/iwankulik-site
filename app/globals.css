@@ -862,6 +862,9 @@ button.link:not(.muted) {
 .not-found-code {
   display: block;
   font-family: var(--font-display);
+  /* Явна вага: span успадковував 400, а Cormorant тепер вантажиться
+     тільки в 300 — як і всюди в решті сайту. */
+  font-weight: 300;
   font-size: 96px;
   line-height: 1;
   letter-spacing: -0.04em;
