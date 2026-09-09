@@ -6,9 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stack
 - Next.js 16 (App Router), plain JavaScript — no TypeScript. `jsconfig.json` aliases `@/*` to `./*`.
-- Package manager is npm; no lockfile is committed, so `npm install` regenerates one.
+- Package manager is npm; `package-lock.json` is committed — use `npm ci` for a clean, reproducible install (that is what Netlify does), `npm install` only when changing dependencies.
 - ESLint is configured (`eslint-config-next/core-web-vitals`, flat config in `eslint.config.mjs`) — run `npm run lint`. No format or test tooling is configured — verify those manually.
-- `README.md` is stale (says "Next.js 15") — trust `package.json`/the installed version instead.
+
+## Verifying
+
+- `npm run lint` and `npm run build` are reliable locally: a green build means the routes and the page count are right.
+- **`next start` on Windows is not a reliable model of production.** It gets `notFound()`, `not-found` boundaries and shell rendering wrong, so conclusions drawn from it about 404s have been wrong twice already. Verify anything in that area on a deploy, not locally.
+- The concrete case: `notFound()` called inside a page renders an empty body locally — Next's own `<html id="__next_error__">` shell, bypassing the `(site)` layout — while on Netlify the same branch renders the full `app/not-found.js` 404 with header, footer and links in the page's locale. Comments in `cycles/[slug]/page.js` and `app/not-found.js` record this.
+- The same caution applies to anything served through the Netlify runtime rather than rendered: ISR, prerender lookups, blob-backed reads.
 
 ## Structure
 - Routes live in root-level `app/`, not `src/app`.

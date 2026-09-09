@@ -6,6 +6,10 @@ import { getClientIp } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
 import { preserveCodes } from "@/lib/workCodes";
 import { normalizePrice } from "@/lib/price";
+// Правила валідації живуть окремо, бо ними користується ще й
+// scripts/push-data.mjs — заливка локальних даних на прод повинна
+// відсіювати рівно те саме, що й адмінка.
+import { validateSiteData } from "@/lib/siteData.mjs";
 
 export async function GET() {
   if (!(await isAuthed())) return NextResponse.json({ ok: false }, { status: 401 });
@@ -19,48 +23,6 @@ function removedItems(beforeList, afterList, idKey) {
   return (beforeList || []).filter((x) => !afterIds.has(x[idKey]));
 }
 
-// blogCovers — необов'язкове поле (slug → url), але якщо клієнт його
-// передав, воно має бути плоским об'єктом рядок→рядок, а не чим завгодно.
-// authenticityPhotos — рівно об'єкт із рядковими значеннями (url або "").
-// Undefined не пропускаємо: normalize() завжди його проставляє, тож
-// його відсутність означає зіпсований запит, а не старого клієнта.
-function isValidAuthPhotos(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  return Object.values(value).every((v) => typeof v === "string");
-}
-
-// hero.videoEnabled — строго boolean, hero.video — строго рядок.
-// Від прапорця залежить, що бачить відвідувач на першому екрані,
-// тож "true" рядком або null тут не приймаємо.
-// Той самий контракт, що й для hero: прапорець — boolean, шлях — рядок.
-function isValidVideoSlot(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  if (typeof value.videoEnabled !== "boolean") return false;
-  if (typeof value.video !== "string") return false;
-  return true;
-}
-
-function isValidHero(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  if (typeof value.videoEnabled !== "boolean") return false;
-  if (typeof value.video !== "string") return false;
-  return true;
-}
-
-// Опис циклу: мапа локаль→рядок. Порожній об'єкт валідний — це
-// стертий текст. undefined теж: normalize() проставить його з насіння.
-function isValidCycleText(value) {
-  if (value === undefined) return true;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  return Object.values(value).every((v) => typeof v === "string");
-}
-
-function isValidBlogCovers(value) {
-  if (value === undefined) return true;
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  return Object.values(value).every((v) => typeof v === "string");
-}
-
 export async function PUT(request) {
   const session = await getSession();
   if (!session.login) return NextResponse.json({ ok: false }, { status: 401 });
@@ -71,21 +33,7 @@ export async function PUT(request) {
   // поля. Доти відхилений запит не доходив до logEvent (той у кінці
   // обробника) і не лишав жодного сліду — саме через це збій в адмінці
   // довелося ловити перехопленням fetch у браузері.
-  const checks = [
-    ["тіло запиту", () => Boolean(data)],
-    ["paintings", () => Array.isArray(data.paintings)],
-    ["cycles", () => Array.isArray(data.cycles)],
-    // Перевірка йде після ["cycles"] і виконується лише якщо та пройшла:
-    // find() зупиняється на першій невдачі, тож .every() тут завжди
-    // працює вже з масивом.
-    ["текст циклу", () => data.cycles.every((c) => isValidCycleText(c && c.text))],
-    ["authenticityPhotos", () => isValidAuthPhotos(data.authenticityPhotos)],
-    ["hero", () => isValidHero(data.hero)],
-    ["processSection", () => isValidVideoSlot(data.processSection)],
-    ["contacts", () => Boolean(data.contacts)],
-    ["blogCovers", () => isValidBlogCovers(data.blogCovers)],
-  ];
-  const failed = checks.find(([, ok]) => !ok())?.[0];
+  const failed = validateSiteData(data);
   if (failed) {
     // Саме тіло не пишемо — там увесь вміст сайту. Лише назва перевірки.
     await logEvent({
