@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sendMail, escapeHtml } from "@/lib/mail";
 import { getClientIp } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
-import { guardInquiry } from "@/lib/formGuard";
+import { guardInquiry, checkBodySize } from "@/lib/formGuard";
 import { getData } from "@/lib/store";
 import { formatPrice } from "@/lib/price";
 
@@ -43,6 +43,11 @@ async function resolveWork(id) {
 }
 
 export async function POST(request) {
+  const oversized = checkBodySize(request);
+  if (oversized) {
+    return NextResponse.json(oversized.body, { status: oversized.status });
+  }
+
   const data = await request.json().catch(() => null);
   if (!data || !data.name || !data.email) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
@@ -56,7 +61,16 @@ export async function POST(request) {
     return NextResponse.json(guard.body, { status: guard.status });
   }
 
-  console.log("[inquiry:painting]", JSON.stringify(data));
+  // Те саме, що й у загальній формі: відомі поля й довжина коментаря.
+  // workId лишаємо — за ним видно, про яку роботу питали, а сама робота
+  // однаково береться зі сховища, не з тіла запиту.
+  console.log("[inquiry:painting]", {
+    workId: data.workId,
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    commentLength: data.comment?.length ?? 0,
+  });
 
   const submittedAt = new Date().toLocaleString("uk-UA", { timeZone: "Europe/Kyiv" });
 

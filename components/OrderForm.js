@@ -42,6 +42,7 @@ export default function OrderForm({ t, subject, inline, email, phone, endpoint =
       if (tok) {
         data.formTs = tok.ts;
         data.formSig = tok.sig;
+        data.formNonce = tok.nonce;
       }
       const res = await fetch(endpoint, {
         method: "POST",
@@ -57,6 +58,10 @@ export default function OrderForm({ t, subject, inline, email, phone, endpoint =
     } catch (err) {
       setStatus("error");
       setErrorCode(err.message || "");
+      // Токен одноразовий, і після вдалої перевірки він уже погашений.
+      // Беремо новий, інакше повторна спроба пішла б із використаним
+      // nonce і тихо відпала б як ботова — з написом «надіслано».
+      fetch("/api/form-token").then((r) => r.json()).then(setToken).catch(() => {});
     }
   }
 
@@ -117,6 +122,7 @@ export default function OrderForm({ t, subject, inline, email, phone, endpoint =
         <input type="text" name="website" className="hp-field" tabIndex={-1} autoComplete="off" aria-hidden="true" />
         <input type="hidden" name="formTs" value={token?.ts || ""} />
         <input type="hidden" name="formSig" value={token?.sig || ""} />
+        <input type="hidden" name="formNonce" value={token?.nonce || ""} />
         <button type="submit" disabled={status === "sending"}>{t.form.send}</button>
         <span className="form-note">{t.gallery.replyFast}</span>
         {status === "error" && (

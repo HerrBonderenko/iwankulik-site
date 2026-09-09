@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sendMail, escapeHtml } from "@/lib/mail";
 import { getClientIp } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
-import { guardInquiry } from "@/lib/formGuard";
+import { guardInquiry, checkBodySize } from "@/lib/formGuard";
 
 // Тип приходить з OrderForm (value незалежний від мови сайту) — тут
 // завжди мапимо в українську, бо лист читає художник.
@@ -11,6 +11,11 @@ const ORDER_TYPE_LABELS = {
 };
 
 export async function POST(request) {
+  const oversized = checkBodySize(request);
+  if (oversized) {
+    return NextResponse.json(oversized.body, { status: oversized.status });
+  }
+
   const data = await request.json().catch(() => null);
   if (!data || !data.name || !data.email) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
@@ -24,7 +29,15 @@ export async function POST(request) {
     return NextResponse.json(guard.body, { status: guard.status });
   }
 
-  console.log("[inquiry]", JSON.stringify(data));
+  // Лише відомі поля й довжина коментаря. Раніше сюди йшло ціле тіло
+  // запиту: будь-яке зайве поле від анонімного відправника осідало в
+  // лозі функції як є, разом із його розміром.
+  console.log("[inquiry]", {
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    commentLength: data.comment?.length ?? 0,
+  });
 
   const submittedAt = new Date().toLocaleString("uk-UA", { timeZone: "Europe/Kyiv" });
   const orderTypeLabel = ORDER_TYPE_LABELS[data.orderType] || null;
