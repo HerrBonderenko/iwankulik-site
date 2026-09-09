@@ -13,6 +13,7 @@ import {
   getPostMeta,
   getPostSlugs,
   getAvailableLocales,
+  pickRelated,
   renderPost,
 } from "@/lib/blog";
 import { getAuthor } from "@/lib/authors";
@@ -84,7 +85,10 @@ export async function generateMetadata({ params }) {
 
 // dynamicParams тут навмисно НЕ вимкнено — те саме, що й у
 // cycles/[slug]: з dynamicParams: false Netlify віддавав 404 на всі
-// вкладені динамічні маршрути. Наслідок для 404 описано там само.
+// вкладені динамічні маршрути. Невідомий слаг доходить до notFound()
+// у сторінці, і на проді це малює нашу 404 цілком; локальний next start
+// на тій самій гілці дає порожнє тіло. Подробиці — у коментарі в
+// cycles/[slug]/page.js.
 
 export const revalidate = 60;
 
@@ -156,9 +160,7 @@ async function ArticleView({ locale, t, slug, post }) {
   const rendered = await renderPost(locale, slug, { FAQBlock });
   if (!rendered) notFound();
   const author = getAuthor(post.author);
-  const related = (await getPostsByCategory(locale, post.category))
-    .filter((p) => p.slug !== slug)
-    .slice(0, 3);
+  const related = pickRelated(await getPostsByCategory(locale, post.category), slug);
 
   const breadcrumb = breadcrumbSchema({
     locale,
