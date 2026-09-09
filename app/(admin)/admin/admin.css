@@ -175,6 +175,17 @@
 }
 .photo-field-btn:hover { background: #e0e4f2; }
 
+/* Дві кнопки вибору фото: зняти камерою або взяти готовий файл. */
+.photo-picker { display: flex; flex-direction: column; gap: 6px; }
+.photo-picker-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.photo-picker-error { color: var(--a-danger); }
+/* Пристрої з мишею: камери там або нема, або capture однаково
+   ігнорується — лишаємо тільки «Обрати файл», щоб не плодити
+   кнопку, яка веде в той самий діалог. */
+@media (pointer: fine) {
+  .photo-picker-camera { display: none; }
+}
+
 /* ── Вибір головного фото ── */
 .hero-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 10px; }
 .hero-pick-item { position: relative; aspect-ratio: 4/3; border: 2px solid transparent; border-radius: 8px; padding: 0; overflow: hidden; background: none; }

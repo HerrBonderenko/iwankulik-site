@@ -20,6 +20,53 @@ async function compressImage(file, maxSide = 1920, quality = 0.85) {
   return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
 }
 
+// Більше за це навіть не намагаємось обробляти: 12-мегапіксельний
+// знімок важить 3-5 МБ, тож 25 МБ — це вже або відео, обране помилково,
+// або щось, від чого браузер просто повисне на createImageBitmap.
+const MAX_PICK_BYTES = 25 * 1024 * 1024;
+
+/* Дві кнопки на один обробник: «Зробити фото» несе capture="environment"
+   і на телефоні відкриває камеру одразу, «Обрати файл» — без capture, тож
+   веде в галерею. Одним інпутом це не робиться: capture на частині
+   пристроїв прибирає вибір із галереї, і зняти готове фото стає нічим.
+
+   Камеру ховаємо на пристроях з мишею — медіазапит (pointer: fine)
+   в admin.css. Саме CSS, а не JS-детект: детект дав би розбіжність
+   розмітки між сервером і клієнтом, а користі з нього стільки ж. */
+function PhotoPicker({ onPick, disabled, className = "photo-field-btn", style }) {
+  const [error, setError] = useState("");
+
+  function handle(e) {
+    const file = e.target.files[0];
+    // Скидаємо значення, інакше повторний вибір того самого файлу
+    // не викликає onChange — браузер вважає, що нічого не змінилось.
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > MAX_PICK_BYTES) {
+      setError("Файл завеликий, оберіть менший");
+      return;
+    }
+    setError("");
+    onPick(file);
+  }
+
+  return (
+    <div className="photo-picker">
+      <div className="photo-picker-btns">
+        <label className={`${className} photo-picker-camera`} style={style}>
+          📷 Зробити фото
+          <input type="file" accept="image/*" capture="environment" hidden disabled={disabled} onChange={handle} />
+        </label>
+        <label className={className} style={style}>
+          📁 Обрати файл
+          <input type="file" accept="image/*" hidden disabled={disabled} onChange={handle} />
+        </label>
+      </div>
+      {error && <span className="small photo-picker-error">{error}</span>}
+    </div>
+  );
+}
+
 const translit = (s) =>
   s.toLowerCase()
     .replace(/[аa]/g, "a").replace(/б/g, "b").replace(/[вv]/g, "v").replace(/г/g, "h")
@@ -105,11 +152,7 @@ function PhotoField({ file, setFile, existing }) {
           </div>
         )
         : <div className="photo-field-empty">фото ще не обрано</div>}
-      <label className="photo-field-btn">
-        {shown ? "Замінити фото" : "📷 Обрати фото *"}
-        <input type="file" accept="image/*" hidden
-          onChange={(e) => setFile(e.target.files[0] || null)} />
-      </label>
+      <PhotoPicker onPick={(f) => setFile(f)} />
       {preview && <span className="small muted">Нове фото обрано ✓</span>}
       {!shown && <span className="small muted">Можна зняти камерою або взяти з галереї телефона</span>}
     </div>
@@ -206,7 +249,7 @@ const AUTH_SLOTS = [
   { key: "certificate", label: "Сертифікат автентичності", hint: "скан або фото бланка; це фото ще й відкривається по кнопці «Подивитися сертифікат»" },
 ];
 
-function AuthenticityTab({ data, setData, persist, uploadPhoto, busy }) {
+function AuthenticityTab({ data, setData, persist, uploadPhoto, uploadPhase, busy }) {
   const [uploading, setUploading] = useState(null);
   const photos = data.authenticityPhotos || {};
 
@@ -215,6 +258,7 @@ function AuthenticityTab({ data, setData, persist, uploadPhoto, busy }) {
     setUploading(key);
     try {
       const meta = await uploadPhoto(file);
+      if (!meta) return;
       setData({ ...data, authenticityPhotos: { ...photos, [key]: meta.url } });
     } finally {
       setUploading(null);
@@ -234,11 +278,11 @@ function AuthenticityTab({ data, setData, persist, uploadPhoto, busy }) {
               </div>
             )
             : <div style={{ width: "100%", maxWidth: 340, aspectRatio: "4/5", background: "var(--bg-panel)" }} />}
-          <label style={{ display: "block", marginTop: 8, fontSize: 13, color: "var(--text-tertiary)" }}>
-            {photos[slot.key] ? "замінити фото" : "завантажити фото"}
-            <input type="file" accept="image/*" style={{ display: "block", marginTop: 6 }}
-              onChange={(e) => onUpload(slot.key, e.target.files[0])} />
-          </label>
+          <span className="small muted" style={{ display: "block", marginTop: 8 }}>
+            {uploading === slot.key ? uploadPhase || "Завантажую…" : photos[slot.key] ? "замінити фото" : "завантажити фото"}
+          </span>
+          <PhotoPicker onPick={(f) => onUpload(slot.key, f)} disabled={uploading === slot.key}
+            className="photo-field-btn" style={{ padding: "8px 16px", fontSize: 13 }} />
           {photos[slot.key] && (
             <button className="link small" style={{ marginTop: 6 }}
               onClick={() => setData({ ...data, authenticityPhotos: { ...photos, [slot.key]: "" } })}>
@@ -355,6 +399,7 @@ function CyclesTab({ data, persist, uploadPhoto, busy, flash }) {
       let next = item;
       if (file) {
         const meta = await uploadPhoto(file);
+        if (!meta) return;
         next = { ...item, img: meta.url, uploadedBy: meta.uploadedBy, uploadedByName: meta.uploadedByName, uploadedAt: meta.uploadedAt };
       }
       // Порожні переклади не тримаємо у сховищі — інакше countNote
@@ -435,7 +480,7 @@ function CyclesTab({ data, persist, uploadPhoto, busy, flash }) {
    самого data-стейту й persist(), що й решта вкладок: завантаження фото
    одразу оновлює data.blogCovers локально, а на диск/у сховище йде тільки
    по «Зберегти» — так само як HeroTab. */
-function BlogTab({ data, setData, persist, uploadPhoto, busy }) {
+function BlogTab({ data, setData, persist, uploadPhoto, uploadPhase, busy }) {
   const [posts, setPosts] = useState(null);
   const [uploadingSlug, setUploadingSlug] = useState(null);
   const covers = data.blogCovers || {};
@@ -450,6 +495,7 @@ function BlogTab({ data, setData, persist, uploadPhoto, busy }) {
     setUploadingSlug(slug);
     try {
       const meta = await uploadPhoto(file);
+      if (!meta) return;
       setData({ ...data, blogCovers: { ...covers, [slug]: meta.url } });
     } finally {
       setUploadingSlug(null);
@@ -495,11 +541,10 @@ function BlogTab({ data, setData, persist, uploadPhoto, busy }) {
               <strong>{post.title}</strong>
               <span className="small muted">{post.slug}</span>
               <div className="blog-admin-actions">
-                <label className="photo-field-btn" style={{ padding: "8px 16px", fontSize: 13 }}>
-                  {uploadingSlug === post.slug ? "Завантажую…" : "Завантажити обкладинку"}
-                  <input type="file" accept="image/*" hidden disabled={uploadingSlug === post.slug}
-                    onChange={(e) => onUpload(post.slug, e.target.files[0])} />
-                </label>
+                {uploadingSlug === post.slug
+                  ? <span className="small muted">{uploadPhase || "Завантажую…"}</span>
+                  : <PhotoPicker onPick={(f) => onUpload(post.slug, f)}
+                      className="photo-field-btn" style={{ padding: "8px 16px", fontSize: 13 }} />}
                 {hasOverride && (
                   <button className="link small" onClick={() => onReset(post.slug)}>
                     скинути до дефолту
@@ -532,7 +577,7 @@ function BlogTab({ data, setData, persist, uploadPhoto, busy }) {
   );
 }
 
-function HeroTab({ data, setData, persist, uploadPhoto, busy }) {
+function HeroTab({ data, setData, persist, uploadPhoto, uploadPhase, busy }) {
   const [uploading, setUploading] = useState(false);
   const current = data.hero?.img;
 
@@ -541,6 +586,7 @@ function HeroTab({ data, setData, persist, uploadPhoto, busy }) {
     setUploading(true);
     try {
       const meta = await uploadPhoto(file);
+      if (!meta) return;
       // Саме злиття, а не заміна: у hero живуть ще videoEnabled і video,
       // а сервер вимагає їх строго (isValidHero). Без ...data.hero будь-яке
       // наступне збереження з будь-якої вкладки поверталося б 400.
@@ -594,11 +640,13 @@ function HeroTab({ data, setData, persist, uploadPhoto, busy }) {
           </button>
         ))}
       </div>
-      <label style={{ display: "block", margin: "16px 0", fontSize: 13, color: "var(--text-tertiary)" }}>
-        або завантажити окреме фото
-        <input type="file" accept="image/*" style={{ display: "block", marginTop: 6 }}
-          onChange={(e) => onUpload(e.target.files[0])} />
-      </label>
+      <div style={{ margin: "16px 0" }}>
+        <span className="small muted" style={{ display: "block", marginBottom: 6 }}>
+          {uploading ? uploadPhase || "Завантажую…" : "або завантажити окреме фото"}
+        </span>
+        <PhotoPicker onPick={(f) => onUpload(f)} disabled={uploading}
+          className="photo-field-btn" style={{ padding: "8px 16px", fontSize: 13 }} />
+      </div>
 
       <div style={{ borderTop: "1px solid var(--a-line)", paddingTop: 16, marginTop: 8 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
@@ -690,6 +738,7 @@ function AboutTab({ data, persist, busy, uploadPhoto }) {
       setUploading(true);
       try {
         const meta = await uploadPhoto(file);
+        if (!meta) return;
         next = { ...about, img: meta.url, uploadedBy: meta.uploadedBy, uploadedByName: meta.uploadedByName, uploadedAt: meta.uploadedAt };
       } finally {
         setUploading(false);
@@ -750,6 +799,8 @@ export default function AdminApp({ user }) {
   const [tab, setTab] = useState("paintings");
   const [editing, setEditing] = useState(null); // { kind, index } | { kind, index: -1 } для нового
   const [busy, setBusy] = useState(false);
+  // Який саме крок іде зараз: стиснення чи власне відправка.
+  const [uploadPhase, setUploadPhase] = useState("");
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -801,13 +852,34 @@ export default function AdminApp({ user }) {
     }
   }
 
+  // Повертає метадані завантаженого фото або null, якщо не вийшло.
+  // Раніше помилка летіла винятком крізь try/finally без catch: спінер
+  // гаснув, а людина не бачила ані причини, ані підказки — просто нічого
+  // не відбувалося. Тепер причина йде у flash, а викликач зупиняється.
   async function uploadPhoto(file) {
-    const small = await compressImage(file);
-    const form = new FormData();
-    form.append("file", small);
-    const res = await fetch("/api/admin/upload", { method: "POST", body: form });
-    if (!res.ok) throw new Error("upload failed");
-    return res.json(); // {ok, url, uploadedBy, uploadedByName, uploadedAt}
+    try {
+      // Стиснення в браузері — найдовший крок на телефоні: 12 Мп
+      // розбираються й перемальовуються в canvas секунди зо дві.
+      setUploadPhase("Обробка зображення…");
+      const small = await compressImage(file);
+      setUploadPhase("Завантаження…");
+      const form = new FormData();
+      form.append("file", small);
+      const res = await fetch("/api/admin/upload", { method: "POST", body: form });
+      if (!res.ok) {
+        flash(res.status === 413 ? "Файл завеликий для сервера" : "Не вдалося завантажити фото");
+        return null;
+      }
+      return await res.json(); // {ok, url, uploadedBy, uploadedByName, uploadedAt}
+    } catch (err) {
+      console.error("[admin] завантаження фото:", err);
+      // Найчастіша причина саме тут — формат, який браузер не декодує
+      // (напр. HEIC з айфона, обраний файлом, а не камерою).
+      flash("Не вдалося обробити це фото. Спробуйте інший файл або зніміть камерою.");
+      return null;
+    } finally {
+      setUploadPhase("");
+    }
   }
 
   async function saveItem(kind, index, item, file) {
@@ -815,6 +887,7 @@ export default function AdminApp({ user }) {
       setBusy(true);
       if (file) {
         const meta = await uploadPhoto(file);
+        if (!meta) { setBusy(false); return; }
         item = { ...item, img: meta.url, uploadedBy: meta.uploadedBy, uploadedByName: meta.uploadedByName, uploadedAt: meta.uploadedAt };
       }
       if (!item.img) { flash("Додайте фото"); setBusy(false); return; }
@@ -907,7 +980,7 @@ export default function AdminApp({ user }) {
       {TAB_HINT[tab] && <p className="admin-note" style={{ margin: "0 4px 8px" }}>{TAB_HINT[tab]}</p>}
 
       {tab === "authenticity" && (
-        <AuthenticityTab data={data} setData={setData} persist={persist} uploadPhoto={uploadPhoto} busy={busy} />
+        <AuthenticityTab data={data} setData={setData} persist={persist} uploadPhoto={uploadPhoto} uploadPhase={uploadPhase} busy={busy} />
       )}
 
       {tab === "cycles" && (
@@ -915,11 +988,11 @@ export default function AdminApp({ user }) {
       )}
 
       {tab === "blog" && (
-        <BlogTab data={data} setData={setData} persist={persist} uploadPhoto={uploadPhoto} busy={busy} />
+        <BlogTab data={data} setData={setData} persist={persist} uploadPhoto={uploadPhoto} uploadPhase={uploadPhase} busy={busy} />
       )}
 
       {tab === "hero" && (
-        <HeroTab data={data} setData={setData} persist={persist} uploadPhoto={uploadPhoto} busy={busy} />
+        <HeroTab data={data} setData={setData} persist={persist} uploadPhoto={uploadPhoto} uploadPhase={uploadPhase} busy={busy} />
       )}
 
       {tab === "about" && (
