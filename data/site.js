@@ -15,7 +15,7 @@ export const hero = {
 
 export const contacts = {
   phone: "",
-  email: "admin@iwankulik.com",
+  email: "project@iwankulik.com",
   instagram: "",
 };
 
