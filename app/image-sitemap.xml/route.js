@@ -1,5 +1,9 @@
 import { SITE_URL } from "@/lib/seo";
-import { getAllSlugs, getAvailableLocales, getPostMeta } from "@/lib/blog";
+import { getAllSlugs, getPublishedLocales, getPostMeta } from "@/lib/blog";
+
+// Та сама причина, що й у app/sitemap.js: карта має сама підхоплювати
+// статті, у яких настала дата публікації, без окремого деплою.
+export const revalidate = 3600;
 
 function escapeXml(value) {
   return String(value)
@@ -11,7 +15,8 @@ function escapeXml(value) {
 async function blogEntries() {
   const entries = [];
   for (const slug of getAllSlugs()) {
-    for (const locale of getAvailableLocales(slug)) {
+    // Заплановані статті пропускаємо — вони віддають 404.
+    for (const locale of getPublishedLocales(slug)) {
       const post = await getPostMeta(locale, slug);
       const url = `${SITE_URL}/${locale}/blog/${slug}`;
       const imageUrl = `${SITE_URL}${post.cover}`;

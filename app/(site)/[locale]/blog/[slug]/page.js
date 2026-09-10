@@ -12,7 +12,9 @@ import {
   getPostsByCategory,
   getPostMeta,
   getPostSlugs,
-  getAvailableLocales,
+  getPublishedLocales,
+  isPublished,
+  isPublishedSlug,
   pickRelated,
   renderPost,
 } from "@/lib/blog";
@@ -37,8 +39,10 @@ export function generateStaticParams() {
     for (const key of CATEGORY_KEYS) {
       params.push({ locale, slug: categorySlug(key, locale) });
     }
+    // Заплановані статті не прередеримо: їх ще нема для сайту. Коли дата
+    // настане, dynamicParams відрендерить сторінку на першому запиті.
     for (const slug of getPostSlugs(locale)) {
-      params.push({ locale, slug });
+      if (isPublishedSlug(locale, slug)) params.push({ locale, slug });
     }
   }
   return params;
@@ -71,11 +75,15 @@ export async function generateMetadata({ params }) {
   }
 
   const post = await getPostMeta(locale, slug);
-  if (!post) return {};
+  // Запланована стаття — те саме, що неіснуюча: сторінка нижче віддасть
+  // notFound(), тож і метадані для неї будувати нема з чого.
+  if (!post || !isPublished(post)) return {};
   return buildMetadata({
     locale,
     path: `/blog/${slug}`,
-    availableLocales: getAvailableLocales(slug),
+    // hreflang звужений до локалей, де переклад уже опублікований:
+    // alternate на ще не видану статтю — це alternate на 404.
+    availableLocales: getPublishedLocales(slug),
     title: post.title,
     description: post.description,
     siteName: t.name,
@@ -103,7 +111,10 @@ export default async function BlogSlugPage({ params }) {
   }
 
   const post = await getPostMeta(locale, slug);
-  if (!post) notFound();
+  // Стаття з датою в майбутньому для сайту ще не існує — прямий URL
+  // має віддати 404, як і будь-який невідомий слаг. Коли дата настане,
+  // ISR (revalidate вище) перемалює цю саму сторінку вже зі статтею.
+  if (!post || !isPublished(post)) notFound();
   return <ArticleView locale={locale} t={t} slug={slug} post={post} />;
 }
 
