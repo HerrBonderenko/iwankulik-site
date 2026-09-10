@@ -1,11 +1,23 @@
 import { locales } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/seo";
-import { CATEGORY_KEYS, categorySlug, getAllSlugs, getAvailableLocales } from "@/lib/blog";
+import {
+  CATEGORY_KEYS,
+  categorySlug,
+  getAllSlugs,
+  getAvailableLocales,
+  getPostLastModified,
+} from "@/lib/blog";
 import { cycles } from "@/data/site";
 
 export default async function sitemap() {
   const pages = ["", "/zhyvopys", "/cycles", "/pro-mene", "/kontakty", "/blog"];
   const entries = [];
+
+  // Один timestamp на всю карту, а не new Date() на кожен запис: інакше
+  // сторінки різняться мілісекундами й виглядають як 225 різних правок.
+  // Для сторінок, вміст яких лежить у коді та data/site.js, дата збірки —
+  // це і є дата останньої зміни: вони перегенеровуються кожним деплоєм.
+  const buildDate = new Date();
 
   // x-default веде на англійську версію — узгоджено з lib/seo.js і з
   // DEFAULT у proxy.js.
@@ -36,7 +48,7 @@ export default async function sitemap() {
     for (const page of pages) {
       entries.push({
         url: `${SITE_URL}/${locale}${page}`,
-        lastModified: new Date(),
+        lastModified: buildDate,
         alternates: { languages: langs(page) },
       });
     }
@@ -45,25 +57,28 @@ export default async function sitemap() {
     for (const cycle of cycles) {
       entries.push({
         url: `${SITE_URL}/${locale}/cycles/${cycle.slug}`,
-        lastModified: new Date(),
+        lastModified: buildDate,
         alternates: { languages: langs(`/cycles/${cycle.slug}`) },
       });
     }
     for (const key of CATEGORY_KEYS) {
       entries.push({
         url: `${SITE_URL}/${locale}/blog/${categorySlug(key, locale)}`,
-        lastModified: new Date(),
+        lastModified: buildDate,
         alternates: { languages: langsForCategory(key) },
       });
     }
   }
 
   // Статті — по одному запису на кожну (локаль, слаг), де файл реально є.
+  // lastmod береться з frontmatter статті (updatedAt, інакше publishedAt),
+  // а не з часу збірки: інакше кожен деплой повідомляє Google, що
+  // змінилися геть усі статті, і сигнал знецінюється.
   for (const slug of getAllSlugs()) {
     for (const locale of getAvailableLocales(slug)) {
       entries.push({
         url: `${SITE_URL}/${locale}/blog/${slug}`,
-        lastModified: new Date(),
+        lastModified: getPostLastModified(locale, slug) || buildDate,
         alternates: { languages: langsForPost(slug) },
       });
     }
