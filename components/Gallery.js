@@ -117,7 +117,10 @@ export default function Gallery({ locale, t, paintings, email, phone }) {
               >
                 {/* Перша мініатюра — найбільший видимий елемент сітки при
                     відкритті сторінки, тобто її LCP. Решта лишається
-                    лінивою: сітка довга, вантажити все одразу ні до чого. */}
+                    лінивою: сітка довга, вантажити все одразу ні до чого.
+                    Alt тут лишається назвою роботи: підпис стоїть поза
+                    посиланням, у figcaption, і без alt посилання лишилось
+                    би без імені. */}
                 <Image src={x.img} alt={pick(x.title, locale)} fill priority={k === 0} sizes="(max-width: 720px) 50vw, 25vw" />
                 {/* Позначка тільки на вільних роботах: якщо позначити всі,
                     вона перестане щось означати. */}
@@ -179,7 +182,8 @@ export default function Gallery({ locale, t, paintings, email, phone }) {
             без сліду. Найкоротший перехід на сайті — гортання буває
             десятки разів поспіль, і помітний рух тут почав би заважати. */}
         <div className="viewer-img" key={p.id}>
-          <Image src={p.img} alt={pick(p.title, locale)} fill priority sizes="(max-width: 800px) 100vw, 760px" />
+          {/* alt="": назва роботи — перший рядок підпису одразу під кадром. */}
+          <Image src={p.img} alt="" fill priority sizes="(max-width: 800px) 100vw, 760px" />
         </div>
         <div className="viewer-caption">
           <span className="viewer-title">{pick(p.title, locale)}</span>

@@ -9,10 +9,11 @@ export default function BlogCard({ locale, t, post }) {
       <Link href={`/${locale}/blog/${post.slug}`} className="blog-card-link">
         <div className="card-img">
           {/* Alt описує саме зображення, а не статтю: обкладинки спільні,
-              див. lib/coverAlt.js. Заголовок і так поруч, у підписі картки. */}
+              див. lib/coverAlt.js. Заголовок і так поруч, у підписі картки,
+              тож без опису кадру alt порожній, а не заголовок. */}
           <Image
             src={post.cover}
-            alt={post.coverAlt ?? coverAlt(post.cover, locale) ?? post.title}
+            alt={post.coverAlt ?? coverAlt(post.cover, locale) ?? ""}
             fill
             sizes="(max-width: 920px) 100vw, 33vw"
           />

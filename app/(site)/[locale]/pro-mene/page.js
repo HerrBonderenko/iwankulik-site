@@ -48,8 +48,9 @@ export default async function AboutPage({ params }) {
       <div className="about-layout">
         <div className="about-media">
           <div className="about-photo">
+            {/* alt="": ім'я стоїть у <h1> поруч, у сусідній колонці. */}
             {about.img && (
-              <Image src={about.img} alt={t.name} fill sizes="(max-width: 920px) 100vw, 470px" />
+              <Image src={about.img} alt="" fill sizes="(max-width: 920px) 100vw, 470px" />
             )}
           </div>
           <div className="about-photo-caption">{t.about.photoCaption}</div>

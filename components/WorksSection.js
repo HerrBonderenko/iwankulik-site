@@ -113,7 +113,8 @@ export default function WorksSection({ locale, t, paintings, cycles, homeCount }
               className={forSale ? "works-card" : "works-card is-dim"}
             >
               <span className="works-card-media" style={{ aspectRatio: aspectFromSize(p.size) }}>
-                <Image src={p.img} alt={title} fill sizes="(max-width: 560px) 100vw, (max-width: 920px) 50vw, 33vw" />
+                {/* alt="": назва роботи стоїть текстом у цьому ж посиланні. */}
+                <Image src={p.img} alt="" fill sizes="(max-width: 560px) 100vw, (max-width: 920px) 50vw, 33vw" />
                 {forSale && (
                   <span className="thumb-badge">
                     <i className="dot" aria-hidden="true" />

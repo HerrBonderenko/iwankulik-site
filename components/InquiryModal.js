@@ -53,7 +53,8 @@ export default function InquiryModal({ t, locale, painting, email, phone, onClos
         <button type="button" className="modal-close" onClick={close} aria-label={t.form.close}>✕</button>
         <div className="modal-head">
           <div className="modal-thumb">
-            <Image src={painting.img} alt={title} fill sizes="72px" />
+            {/* alt="": назва роботи — у рядку поруч. */}
+            <Image src={painting.img} alt="" fill sizes="72px" />
           </div>
           <div>
             <div id={titleId} style={{ fontWeight: 500 }}>{heading}</div>

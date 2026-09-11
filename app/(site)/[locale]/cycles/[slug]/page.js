@@ -102,7 +102,10 @@ export default async function CyclePage({ params }) {
 
         {cycle.img && (
           <div className="cycle-hero">
-            <Image src={cycle.img} alt={title} fill sizes="(max-width: 920px) 100vw, 900px" />
+            {/* alt="": назва циклу стоїть у <h1> просто над картинкою, і з
+                alt={title} скрінрідер читав її двічі поспіль — як було в
+                картках циклів. */}
+            <Image src={cycle.img} alt="" fill sizes="(max-width: 920px) 100vw, 900px" />
           </div>
         )}
 

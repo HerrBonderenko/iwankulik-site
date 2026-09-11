@@ -225,10 +225,11 @@ async function ArticleView({ locale, t, slug, post }) {
         {post.cover && (
           <div className="object-hero" style={{ marginTop: 24 }}>
             {/* Обкладинка — LCP сторінки статті: стоїть одразу під
-                заголовком і на весь її стовпчик. */}
+                заголовком і на весь її стовпчик. Без опису кадру alt
+                порожній, а не заголовок: той і так у <h1> над нею. */}
             <Image
               src={post.cover}
-              alt={post.coverAlt ?? coverAlt(post.cover, locale) ?? post.title}
+              alt={post.coverAlt ?? coverAlt(post.cover, locale) ?? ""}
               fill
               priority
               sizes="(max-width: 800px) 100vw, 760px"

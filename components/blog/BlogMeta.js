@@ -8,7 +8,8 @@ export default function BlogMeta({ locale, t, author, publishedAt, updatedAt, re
       {author && (
         <div className="blog-meta-author">
           <div className="blog-meta-avatar">
-            <Image src={author.photo} alt={pick(author.name, locale)} fill sizes="40px" />
+            {/* alt="": ім'я автора стоїть текстом одразу поруч. */}
+            <Image src={author.photo} alt="" fill sizes="40px" />
           </div>
           <span>{pick(author.name, locale)}</span>
         </div>

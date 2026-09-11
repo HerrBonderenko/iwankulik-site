@@ -49,12 +49,13 @@ export default async function Home({ params }) {
               (виміряно: Load Delay 1.1 s). preload + fetchPriority="high" дають
               і ранній preload, і високий пріоритет — обидва потрапляють і в
               <link>, і в <img>.
+              alt="": той самий напис стоїть поверх фото в <h1>.
               sizes рахуємо по факту: на телефоні фото на всю ширину, на
               десктопі в .hero є padding 20px з кожного боку, а коли грає
               відео — ще й колонка 420px + gap 20px зліва. */}
           <Image
             src={hero.img}
-            alt={t.hero.tagline}
+            alt=""
             fill
             preload
             fetchPriority="high"
