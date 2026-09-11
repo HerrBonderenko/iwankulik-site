@@ -26,6 +26,7 @@ import BlogMeta from "@/components/blog/BlogMeta";
 import BlogToC from "@/components/blog/BlogToC";
 import RelatedPosts from "@/components/blog/RelatedPosts";
 import FAQBlock from "@/components/blog/FAQBlock";
+import { assertBlogContent } from "@/lib/blogValidation";
 
 // Next.js не дозволяє двом сусіднім папкам на одному рівні мати різні
 // імена динамічного сегмента ([category] і [slug] одночасно під /blog/
@@ -33,7 +34,12 @@ import FAQBlock from "@/components/blog/FAQBlock";
 // dynamic path"). Тому категорія й стаття живуть в одному [slug]/page.js
 // і розрізняються в рантаймі: спершу перевіряємо, чи це відомий
 // (локалізований) слаг категорії, інакше шукаємо статтю з таким слагом.
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  // Битий контент валить збірку тут, зі списком файлів і полів, а не
+  // доїжджає до відвідувача. Під час ISR-регенерації Next цю функцію не
+  // викликає, тож рантайм перевірка не зачіпає (див. lib/blogValidation.js).
+  await assertBlogContent();
+
   const params = [];
   for (const locale of locales) {
     for (const key of CATEGORY_KEYS) {
