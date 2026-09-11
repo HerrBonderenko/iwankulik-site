@@ -123,4 +123,14 @@ const nextConfig = {
     ];
   },
 };
-export default nextConfig;
+// Функція фази замість об'єкта — лише заради сторожа картинок: у фазі
+// production-збірки він валить збірку, якщо файл у public/assets замінено
+// під тим самим ім'ям (див. lib/assetGuard.mjs). У dev і start не працює.
+// "phase-production-build" — значення PHASE_PRODUCTION_BUILD з next/constants.
+export default async function config(phase) {
+  if (phase === "phase-production-build") {
+    const { assertAssetsNotReplaced } = await import("./lib/assetGuard.mjs");
+    assertAssetsNotReplaced();
+  }
+  return nextConfig;
+}

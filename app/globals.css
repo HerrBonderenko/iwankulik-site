@@ -349,7 +349,10 @@ button.link:not(.muted) {
 .mobile-actions .theme-btn { padding: 7px 10px; }
 
 .langs { display: flex; gap: 8px; font-size: 13px; }
-.langs a { color: var(--text-quiet); }
+/* --text-meta, а не --text-quiet: у світлій темі неактивні мови давали
+   3.94:1 при кеглі 13px. Тепер 5.00 світла / 5.49 темна; активна мова
+   (--text) лишається помітно яскравішою. */
+.langs a { color: var(--text-meta); }
 .langs a.active { color: var(--text); }
 
 /* Тач-зони. Кегль не чіпаємо — росте лише область, у яку треба влучити.
@@ -368,6 +371,65 @@ button.link:not(.muted) {
   .langs { gap: 0; }
   .langs a { min-width: 44px; }
 }
+
+/* Зони дотику решти дрібних цілей: не менше 24×24 (WCAG 2.5.8), а де
+   місця вистачає — 44×44. Видимий розмір не змінюється: росте прозорий
+   ::after поверх самого елемента, і тап у ньому належить посиланню чи
+   кнопці. Кегль, відступи й сітка ті самі.
+
+   Відступ рахується через calc, а не transform: блок prefers-reduced-motion
+   унизу файлу гасить transform на всіх псевдоелементах, і центрування
+   з'їхало б саме в тих, хто вимкнув анімації. calc(50% - max(50%, 22px))
+   дає -11px елементу у 22px і 0 — елементу, що вже вищий за 44. */
+.link,
+.nav > a,
+.logo,
+.theme-btn,
+.footer > a,
+.label > a,
+.blog-card-category > a,
+a.blog-card-category,
+.works-foot a,
+.about-cta,
+.cycles-all,
+.blog-toc nav a,
+.blog-toc summary,
+.blog-faq-item summary {
+  position: relative;
+}
+.link::after,
+.nav > a::after,
+.logo::after,
+.theme-btn::after,
+.footer > a::after,
+.label > a::after,
+.blog-card-category > a::after,
+a.blog-card-category::after,
+.works-foot a::after,
+.about-cta::after,
+.cycles-all::after,
+.blog-toc nav a::after,
+.blog-toc summary::after,
+.blog-faq-item summary::after {
+  content: "";
+  position: absolute;
+  inset-block: calc(50% - max(50%, 22px));
+  inset-inline: calc(50% - max(50%, 22px));
+}
+/* Там, де сусідня ціль ближче за 11px, росте менше — інакше дві зони
+   налізли б одна на одну й тап став би неоднозначним:
+   - e-mail у підвалі: на телефоні рядки підвалу переносяться з кроком 8px,
+     під ним поле пошуку (34px на телефоні, 44 на десктопі);
+   - категорія в картці статті: за 8px над нею заголовок-посилання (33px);
+   - пункти змісту: крок рядків 32px (29px). */
+.footer > a::after { inset-block: -6px; }
+a.blog-card-category::after,
+.blog-toc nav a::after { inset-block: -7px; inset-inline: 0; }
+/* Підсумки <details> забирають усю внутрішню рамку свого блоку. У змісту
+   знизу лише 4px: перше посилання списку починається за 12px, а його
+   власна зона — ще на 7px вище. */
+.blog-toc summary::after { inset: -16px -20px -4px; }
+.blog-faq-item summary::after { inset: -14px -18px; }
 
 .burger {
   display: none;
@@ -676,12 +738,18 @@ button.link:not(.muted) {
 
 /* footer */
 .footer { padding: 32px 0; font-size: 13px; color: var(--text-tertiary); display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
-.footer-copy { color: var(--text-faint); }
-.footer-credit { color: var(--text-faintest); }
-.footer-credit-link { text-decoration: none; }
-@media (hover: hover) and (pointer: fine) {
-  .footer-credit-link:hover { text-decoration: underline; text-underline-offset: 3px; }
-}
+/* Контраст дрібного (13px) тексту підвалу — не нижче 4.5:1 в обох темах.
+   Було --text-faint / --text-faintest: 3.86 і 3.63 у темній, 3.33 і 3.15
+   у світлій. Найтихіші токени палітри, що проходять поріг в обох темах:
+   --text-meta (5.49 / 5.00) і --text-label (5.19 / 4.71). Ієрархія та
+   сама: основний текст підвалу (--text-tertiary) > копірайт > рядок
+   розробника. */
+.footer-copy { color: var(--text-meta); }
+.footer-credit { color: var(--text-label); }
+/* Посилання посеред речення відрізняється не лише кольором (WCAG 1.4.1):
+   підкреслення постійне, а не тільки під курсором — на телефоні курсора
+   нема. */
+.footer-credit-link { text-decoration: underline; text-underline-offset: 3px; }
 
 /* filter */
 .filter { display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; margin-bottom: 32px; }
@@ -826,7 +894,10 @@ button.link:not(.muted) {
 .modal-thumb { position: relative; width: 72px; height: 72px; flex: none; background: var(--bg-deep); }
 .modal-thumb img { object-fit: cover; }
 .form { display: flex; flex-direction: column; gap: 12px; }
-.form label { font-size: 13px; color: var(--text-label); display: flex; flex-direction: column; gap: 4px; }
+/* --text-meta, а не --text-label: форма на головній лежить на --bg-deep, і
+   в світлій темі --text-label давав 4.47:1 — на волосок нижче 4.5.
+   --text-meta: 4.73 світла, 5.59 темна. */
+.form label { font-size: 13px; color: var(--text-meta); display: flex; flex-direction: column; gap: 4px; }
 .form input, .form textarea {
   border: 1px solid var(--border); background: var(--bg); color: var(--text);
   padding: 10px 12px; border-radius: 2px; font-size: 14px;
