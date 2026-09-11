@@ -119,6 +119,22 @@ export default async function LocaleLayout({ children, params }) {
         <main>{children}</main>
         <Footer locale={locale} t={t} contacts={contacts} works={works} />
         <ScrollTop label={t.scrollTop} />
+        {/* Аналітика Umami Cloud — без cookies, тож банер згоди не
+            потрібен. Відсікання тестових заходів у два шари:
+            IS_PRODUCTION_DEPLOY вшивається на збірці лише для
+            продакшн-деплою (див. next.config.mjs), тож localhost і
+            deploy preview скрипт навіть не отримують; data-domains
+            додатково глушить його на *.netlify.app-адресах самого
+            прод-деплою — Umami шле події лише з iwankulik.com.
+            Адмінка має власний кореневий макет і сюди не потрапляє. */}
+        {process.env.IS_PRODUCTION_DEPLOY && (
+          <Script
+            src="https://cloud.umami.is/script.js"
+            data-website-id="c325a397-b6d5-4ac4-86e9-f2eb60d4880e"
+            data-domains="iwankulik.com"
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );

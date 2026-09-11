@@ -11,9 +11,16 @@
 // скриптів Next.js падають разом із гідратацією.
 //
 // Що політика все одно тримає: зовнішній скрипт (<script src=чужий-домен>)
-// не завантажиться, дані нікуди не підуть — connect-src і img-src замкнені
-// на свій домен, <base> не підмінити, форму не перенаправити на чужий
-// приймач, сайт не вкласти в чужий фрейм.
+// не завантажиться — виняток лише cloud.umami.is; дані нікуди не підуть —
+// connect-src замкнений на свій домен і шлюз Umami, img-src — на свій
+// домен і сховище нижче; <base> не підмінити, форму не перенаправити на
+// чужий приймач, сайт не вкласти в чужий фрейм.
+//
+// Umami Cloud (аналітика, див. (site)/[locale]/layout.js): сам скрипт
+// береться з cloud.umami.is, а події він шле POST-запитом на інший домен —
+// gateway.umami.is/api/send (адреса за замовчуванням у script.js,
+// перевірено по його коду). Без gateway.umami.is у connect-src скрипт
+// завантажився б, а кожна подія мовчки падала б на CSP.
 //
 // blob: в img-src — прев'ю фото в адмінці: PhotoField робить
 // URL.createObjectURL(file) ще до завантаження на сервер.
@@ -25,12 +32,12 @@
 // eval(, ні new Function( — перевірено пошуком по .next/static.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://cloud.umami.is",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
   "font-src 'self'",
   "media-src 'self'",
-  "connect-src 'self'",
+  "connect-src 'self' https://gateway.umami.is",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -77,6 +84,15 @@ const nextConfig = {
   // літерал у скомпільований код, тож рантайм-оточення більше не важливе.
   env: {
     IS_NETLIFY_BUILD: process.env.NETLIFY ?? "",
+    // Ознака продакшн-деплою для аналітики. NODE_ENV тут не годиться:
+    // у deploy preview і branch deploy Netlify він теж "production".
+    // Відрізняє їх лише CONTEXT ("production" | "deploy-preview" |
+    // "branch-deploy" | "dev"), а він, як і NETLIFY, є тільки на збірці —
+    // тому вшиваємо так само. VERCEL_ENV — те саме для Vercel-збірки.
+    // Локально обидві змінні порожні, тож і `next build` на своїй машині
+    // скрипт аналітики не отримує.
+    IS_PRODUCTION_DEPLOY:
+      process.env.CONTEXT === "production" || process.env.VERCEL_ENV === "production" ? "1" : "",
   },
   // Сторінки йдуть через Next.js Server Handler (Netlify Function), а не
   // як статика — тож заголовки безпеки з netlify.toml [[headers]] їх не
