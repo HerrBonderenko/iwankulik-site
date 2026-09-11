@@ -31,8 +31,20 @@ function detect(header) {
   return DEFAULT;
 }
 
+// Шлях із розширенням в останньому сегменті — файл: sitemap.xml,
+// robots.txt, іконки, /assets/*, /og/*, /uploads/*. Його віддаємо як є,
+// без мови, і новий статичний файл більше нікуди вписувати не треба.
+//
+// Відоме обмеження: слаг, що закінчується крапкою з літерами чи цифрами
+// (version-2.0), сприйметься як файл і редиректу не отримає. Таких
+// слагів нема ні в статей, ні в категорій, ні в циклів; крапка всередині
+// слага безпечна — $ дивиться лише на кінець шляху.
+const HAS_EXTENSION = /\.[a-zA-Z0-9]+$/;
+
 export default function proxy(request) {
   const { pathname } = request.nextUrl;
+  if (HAS_EXTENSION.test(pathname)) return NextResponse.next();
+
   const hasLocale = locales.some(
     (l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`)
   );
@@ -43,24 +55,28 @@ export default function proxy(request) {
     ? cookie
     : detect(request.headers.get("accept-language"));
 
+  // clone() зберігає query: /blog/x?utm_source=… → /en/blog/x?utm_source=…
   const url = request.nextUrl.clone();
   url.pathname = `/${locale}${pathname === "/" ? "" : pathname}`;
   return NextResponse.redirect(url);
 }
 
-// Проксі чіпає лише сторінки: усе, що нижче, воно пропускає повз себе.
+// Проксі чіпає лише сторінки. Сторінку від файлу відрізняємо за формою
+// шляху (HAS_EXTENSION вище), а не за переліком винятків.
 //
-// Іконки раніше були перелічені поіменно (favicon.ico, apple-icon.png,
-// icon-512.png…) — і кожен новий файл доводилося дописувати сюди руками,
-// інакше запит до нього ловив редірект локалі. Замість списку — правило
-// за розширенням: будь-який файл-зображення в корені.
+// Раніше тут був чорний список: api|admin|_next|assets|uploads|og|blog/|
+// sitemap.xml|… Він приїхав із сайту fedotiuk.com разом із "blog/": там
+// обкладинки статей лежали в public/blog/*.jpg, і проксі редиректив їх на
+// /{locale}/blog/….jpg, ламаючи next/image. Тут public/blog ніколи не
+// було (обкладинки в /assets), тож "blog/" нічого не захищав — лише
+// забирав адреси статей без мови: /blog/<слаг> віддавав 404, поки /blog і
+// /kontakty редиректили. Решта винятків не мала межі сегмента й теж
+// ковтала чужі шляхи: "og" — будь-що на og… (/ogrody), "api" — /apiary,
+// "admin" — /administrator.
 //
-// `[^/]+` не переходить через слеш, тож правило стосується саме кореня:
-// /icon-192.png воно виключає, а /uk/щось.png — ні (такого в нас і нема,
-// але межу краще тримати вузькою). Каталоги з картинками (assets, og,
-// uploads) виключені окремо вище — вони мають вкладеність.
+// У матчері лишаються тільки шляхи без розширення, які редиректити не
+// можна: /api/*, /admin, /admin/*, /_next/* (/_next/image теж без
+// розширення) і /_vercel/*. (?:/|$) тримає межу сегмента.
 export const config = {
-  matcher: [
-    "/((?!api|admin|_next|assets|uploads|og|blog/|sitemap.xml|image-sitemap.xml|robots.txt|manifest.webmanifest|[^/]+\\.(?:png|ico|svg|webp|jpe?g|avif|gif)$).*)",
-  ],
+  matcher: ["/((?!(?:api|admin|_next|_vercel)(?:/|$)).*)"],
 };
