@@ -34,7 +34,22 @@ export default function NotFoundPage({ dicts, contacts, works }) {
     // Заголовок у metadata український — сервер мови не знає. Тут вона вже
     // відома з адреси, тож уточнюємо (сторінка noindex, це для вкладки,
     // історії й закладок, не для пошуковика).
-    document.title = `${t.notFound.title} — ${t.name}`;
+    const title = `${t.notFound.title} — ${t.name}`;
+    const apply = () => {
+      if (document.title !== title) document.title = title;
+    };
+    apply();
+    // Одного присвоєння мало: на адресах поза маршрутами (/de/щось) Next
+    // застосовує <title> із metadata вже після цього ефекту, і вкладка
+    // лишалася українською на всіх мовах. Тому стежимо за <head> і
+    // повертаємо свій заголовок, щойно його перезаписали. Власний запис
+    // спостерігача не зациклює: apply нічого не робить, якщо текст збігся.
+    // Рендерити <title> елементом не можна: без title у metadata в оболонку
+    // notFound() із cycles/blog просочується заголовок головної з макета
+    // [locale], а з ним виходить два <title> на сторінці.
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
   }, [locale, t]);
 
   return (

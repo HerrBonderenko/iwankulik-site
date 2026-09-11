@@ -70,6 +70,8 @@ const dicts = Object.fromEntries(locales.map((l) => [l, shell(l)]));
 // скриптом нижче ще до першої відмальовки й ефектом у NotFoundPage.
 const UK = getDict("uk");
 
+// title лишається тут, хоч клієнт його й переписує: без нього в оболонку
+// notFound() із cycles/blog потрапляє заголовок головної з макета [locale].
 export const metadata = {
   title: `${UK.notFound.title} — ${UK.name}`,
   description: UK.notFound.text,
