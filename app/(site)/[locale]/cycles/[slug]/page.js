@@ -44,6 +44,7 @@ export async function generateMetadata({ params }) {
     title: `${title} — ${t.name}`,
     description: lead || interpolate(t.seo.cycles.itemDescription, { title }),
     siteName: t.name,
+    generatedImage: true,
   });
 }
 

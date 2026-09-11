@@ -18,9 +18,9 @@ export async function generateMetadata({ params }) {
     title: t.seo.paintings.title,
     description: t.seo.paintings.description,
     siteName: t.name,
-    // Своєї og-картинки в цієї сторінки більше нема: /og/zhyvopys.jpg була
+    // Картка з opengraph-image.js поруч. Колишня /og/zhyvopys.jpg була
     // фотографією розпису зі старого проєкту й пішла разом із рештою.
-    // Без image buildMetadata підставить спільну /og/default.jpg.
+    generatedImage: true,
   });
 }
 

@@ -71,6 +71,7 @@ export async function generateMetadata({ params }) {
       title: `${categoryName(categoryKey, locale)} — ${t.blog.title} | ${t.name}`,
       description: categoryDescription(t, categoryKey),
       siteName: t.name,
+      generatedImage: true,
     });
   }
 
@@ -87,7 +88,9 @@ export async function generateMetadata({ params }) {
     title: post.title,
     description: post.description,
     siteName: t.name,
-    image: { url: `${SITE_URL}${post.cover}` },
+    // Картка з заголовком статті поверх її обкладинки (opengraph-image.js
+    // поруч) замість голої обкладинки: у стрічці соцмережі видно, про що текст.
+    generatedImage: true,
     type: "article",
   });
 }

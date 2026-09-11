@@ -19,6 +19,7 @@ export async function generateMetadata({ params }) {
     title: t.seo.cycles.title,
     description: t.seo.cycles.description,
     siteName: t.name,
+    generatedImage: true,
   });
 }
 

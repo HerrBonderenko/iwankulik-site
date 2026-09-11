@@ -18,6 +18,7 @@ export async function generateMetadata({ params }) {
     title: t.seo.contacts.title,
     description: t.seo.contacts.description,
     siteName: t.name,
+    generatedImage: true,
   });
 }
 

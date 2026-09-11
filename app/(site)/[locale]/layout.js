@@ -80,6 +80,7 @@ export async function generateMetadata({ params }) {
       title: t.seo.home.title,
       description: t.seo.home.description,
       siteName: t.name,
+      generatedImage: true,
     }),
     // Підтвердження прав у Google Search Console. Стоїть тут, у макеті
     // локалі, а не в buildMetadata: метадані макета успадковують усі
