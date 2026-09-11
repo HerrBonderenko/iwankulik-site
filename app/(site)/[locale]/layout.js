@@ -115,7 +115,7 @@ export default async function LocaleLayout({ children, params }) {
             document.documentElement.setAttribute("data-theme", "dark");
           }
         `}</Script>
-        <JsonLd data={personSchema()} />
+        <JsonLd data={personSchema(locale)} />
         <Header locale={locale} t={t} contacts={contacts} />
         <main>{children}</main>
         <Footer locale={locale} t={t} contacts={contacts} works={works} />

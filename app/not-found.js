@@ -75,6 +75,11 @@ const UK = getDict("uk");
 export const metadata = {
   title: `${UK.notFound.title} — ${UK.name}`,
   description: UK.notFound.text,
+  // На 404 з notFound() у cycles/blog метадані макета [locale] доходять
+  // сюди й приносили canonical і hreflang головної — адресу, якою ця
+  // сторінка не є. Сторінка й так noindex, але canonical на чужу адресу
+  // формально неправильний, тож скидаємо.
+  alternates: null,
   // Next і сам ставить noindex на not-found, але власний metadata його
   // перекриває — тож повторюємо явно.
   robots: { index: false, follow: false },

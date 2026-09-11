@@ -29,7 +29,6 @@
     "s4": "Przekazanie",
     "s4d": "Osobiście w pracowni w Warszawie lub wysyłka ubezpieczona z certyfikatem.",
     "paintingsTitle": "Malarstwo",
-    "paintingsSub": "olej na płótnie",
     "priceNote": "Oryginały w pracowni · ceny z VAT",
     "filterAll": "Wszystkie",
     "worksShown": "{shown} z {total} prac",
@@ -169,15 +168,13 @@
   },
   "blog": {
     "title": "Blog",
-    "allCategories": "Wszystkie kategorie",
     "categoryAll": "Wszystkie",
     "toc": "Spis treści",
     "related": "Podobne artykuły",
     "publishedOn": "Opublikowano",
     "updatedOn": "Zaktualizowano",
     "minRead": "min czytania",
-    "noPosts": "W tej kategorii nie ma jeszcze artykułów.",
-    "readMore": "Czytaj →"
+    "noPosts": "W tej kategorii nie ma jeszcze artykułów."
   },
   "seo": {
     "home": {

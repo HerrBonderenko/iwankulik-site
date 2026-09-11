@@ -50,9 +50,11 @@ export default async function CyclesPage({ params }) {
             const note = c.countNote ? pick(c.countNote, locale) : null;
             return (
               <Link key={c.id} href={`/${locale}/cycles/${c.slug}`} className="cycle-card">
+                {/* alt="": назва циклу стоїть у цьому ж посиланні текстом, і з
+                    alt={title} скрінрідер читав її двічі поспіль. */}
                 <span className="cycle-card-img">
                   {c.img
-                    ? <Image src={c.img} alt={title} fill sizes="(max-width: 920px) 100vw, 33vw" />
+                    ? <Image src={c.img} alt="" fill sizes="(max-width: 920px) 100vw, 33vw" />
                     : <span className="cycle-img-empty" />}
                 </span>
                 <span className="cycle-card-title">{title}</span>

@@ -43,10 +43,17 @@ export default function CyclesSection({ locale, t, cycles }) {
             // Зображення завжди перед назвою в DOM: на телефоні колонки
             // схлопуються в одну, і порядок стає «фото, потім назва».
             <div key={c.id} className="cycle-row" style={{ display: "contents" }}>
+              {/* Кадр веде туди ж, куди й назва поруч, — це те саме посилання
+                  двічі: два кроки табуляції, і скрінрідер читав назву циклу
+                  двічі (aria-label кадру, потім саму назву). Мишею й пальцем
+                  кадр клікабельний, як і був; з клавіатури й для допоміжних
+                  технологій лишається одне посилання — назва. Картинка
+                  всередині тоді декоративна: alt="". */}
               <Link
                 href={`/${locale}/cycles/${c.slug}`}
                 className="cycle-img"
-                aria-label={title}
+                aria-hidden="true"
+                tabIndex={-1}
                 style={{
                   gridColumn: row.img.col,
                   gridRow: i + 1,
@@ -55,7 +62,7 @@ export default function CyclesSection({ locale, t, cycles }) {
               >
                 <div className="cycle-img-inner">
                   {c.img
-                    ? <Image src={c.img} alt={title} fill sizes="(max-width: 920px) 100vw, 55vw" />
+                    ? <Image src={c.img} alt="" fill sizes="(max-width: 920px) 100vw, 55vw" />
                     : <div className="cycle-img-empty" />}
                 </div>
               </Link>

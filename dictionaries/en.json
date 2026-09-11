@@ -29,7 +29,6 @@
     "s4": "Handover",
     "s4d": "In person at the Warsaw studio or insured shipping with the certificate.",
     "paintingsTitle": "Paintings",
-    "paintingsSub": "oil on canvas",
     "priceNote": "Originals in the studio · prices incl. VAT",
     "filterAll": "All",
     "worksShown": "{shown} of {total} works",
@@ -169,15 +168,13 @@
   },
   "blog": {
     "title": "Blog",
-    "allCategories": "All categories",
     "categoryAll": "All",
     "toc": "Table of contents",
     "related": "Related posts",
     "publishedOn": "Published",
     "updatedOn": "Updated",
     "minRead": "min read",
-    "noPosts": "No posts in this category yet.",
-    "readMore": "Read →"
+    "noPosts": "No posts in this category yet."
   },
   "seo": {
     "home": {

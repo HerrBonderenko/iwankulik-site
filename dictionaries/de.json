@@ -29,7 +29,6 @@
     "s4": "Übergabe",
     "s4d": "Persönlich im Atelier in Warschau oder versicherter Versand mit Zertifikat.",
     "paintingsTitle": "Malerei",
-    "paintingsSub": "Öl auf Leinwand",
     "priceNote": "Originale im Atelier · Preise inkl. MwSt.",
     "filterAll": "Alle",
     "worksShown": "{shown} von {total} Werken",
@@ -169,15 +168,13 @@
   },
   "blog": {
     "title": "Blog",
-    "allCategories": "Alle Kategorien",
     "categoryAll": "Alle",
     "toc": "Inhaltsverzeichnis",
     "related": "Ähnliche Beiträge",
     "publishedOn": "Veröffentlicht",
     "updatedOn": "Aktualisiert",
     "minRead": "Min. Lesezeit",
-    "noPosts": "In dieser Kategorie gibt es noch keine Beiträge.",
-    "readMore": "Lesen →"
+    "noPosts": "In dieser Kategorie gibt es noch keine Beiträge."
   },
   "seo": {
     "home": {

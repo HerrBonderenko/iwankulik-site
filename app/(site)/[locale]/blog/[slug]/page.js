@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDict, pick, locales } from "@/lib/i18n";
+import { getDict, locales } from "@/lib/i18n";
 import { buildMetadata, SITE_URL } from "@/lib/seo";
 import { breadcrumbSchema, collectionPageSchema, articleSchema } from "@/lib/schema";
 import {
@@ -200,7 +200,7 @@ async function ArticleView({ locale, t, slug, post }) {
     image: `${SITE_URL}${post.cover}`,
     publishedAt: post.publishedAt,
     updatedAt: post.updatedAt,
-    authorName: author ? pick(author.name, locale) : undefined,
+    authorId: post.author,
   });
 
   return (
