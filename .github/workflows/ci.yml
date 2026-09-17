@@ -1,0 +1,49 @@
+# CI на кожен push і pull request. Головне тут — тести реально
+# ВИКОНУЮТЬСЯ на кожну зміну: команда збірки на хостингу (Netlify UI /
+# vercel.json) їх не запускає (див. SECURITY_AUDIT_REPORT.md §6.2), тож
+# без цього workflow вони не спрацьовували б ніколи.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# Скасовуємо застарілі прогони тієї самої гілки, щоб не тримати чергу.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      # npm ci — точнісінько як на Netlify: ставить із package-lock,
+      # без «тихого» оновлення версій.
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Збірку робимо ДО тестів: інтеграційні тести піднімають саме
+      # зібраний застосунок (next start), і окремий крок дає зрозумілий
+      # лог, якщо зламалася саме збірка, а не тест.
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      # Аудит залежностей — окремим кроком і не мовчки: high/critical
+      # валять збірку. Не в install, щоб відрізняти «зламалася залежність»
+      # від «зʼявилася вразливість».
+      - name: Audit dependencies
+        run: npm audit --audit-level=high

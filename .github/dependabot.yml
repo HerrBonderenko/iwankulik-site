@@ -1,0 +1,25 @@
+# Автоматичне стеження за залежностями.
+#
+# ВАЖЛИВО: сам цей файл сповіщень Dependabot НЕ вмикає, поки в
+# Settings → Code security репозиторію не увімкнено «Dependency graph»
+# та «Dependabot alerts». Без графа файл лежить, а листів немає —
+# перемикач вмикається руками один раз (SECURITY_AUDIT_REPORT.md §6.3).
+# CI-крок `npm audit --audit-level=high` працює незалежно від цих
+# налаштувань і лишається другим рубежем.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    # Патчі й мінорні — разом, щоб не плодити PR на кожну дрібницю;
+    # мажорні — окремо, бо можуть ламати (як Next 16 у цьому проєкті).
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
