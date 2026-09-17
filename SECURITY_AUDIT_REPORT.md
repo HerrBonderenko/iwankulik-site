@@ -1,810 +1,863 @@
-# Аудит безопасности iwankulik-site
+# Аудит безопасности iwankulik-site — проверка запуском
 
-Дата: 2026-09-16. Ветка: `claude/magical-tesla-ojsk6y`, HEAD `ed320fc`.
-Метод: статический анализ кода и конфигурации репозитория. Запросов к
-продакшену, внешним сервисам и чужим хостам не делалось. На момент аудита
-код не менялся — в репозиторий был добавлен только этот файл.
+Дата: 2026-09-17. Ветка `claude/magical-tesla-ojsk6y`, HEAD `2f36acd`.
 
-## Статус исправлений (2026-09-17)
+**Метод.** Приложение развёрнуто локально (`next build` + `next start`, `NODE_ENV=production`)
+и проверено настоящими запросами; браузерная часть — в Chromium через Playwright.
+Каждое утверждение ниже подкреплено наблюдаемым результатом: кодом ответа, строкой
+журнала, содержимым разметки или сообщением браузера. Наружу не ушло ни одного
+запроса: `RESEND_API_KEY` намеренно не задавался (почта возвращает `{skipped:true}`
+без сетевого вызова), «внешние» адреса в тестах — это локальный слушатель на
+`127.0.0.1:9999`. Полезная нагрузка везде безвредная: `<b>audit-marker</b>`, кавычки,
+`< > &`, обработчик, меняющий `document.title`.
 
-Все находки F-01–F-10 исправлены в этой же ветке двумя коммитами:
-`Update next, sharp and js-yaml to patched releases` (F-01) и
-`Apply security audit fixes F-02 through F-10`. Проверено: `npm audit` —
-0 уязвимостей, `npm run lint` — чисто, `npm run build` — 327 страниц,
-все маршруты собираются; чистые функции (`safeAbsoluteUrl`,
-`sanitizeSubject`, обрезка журнала, traversal-guard, `SLUG_RE`) прогнаны
-на маркерных строках из раздела 8 — 21/21 проверок прошло. Общая проверка
-URL вынесена в `lib/safeUrl.js` (рекомендация 5) и используется письмом
-заявки и OG-генератором.
+**Важно про предыдущий аудит.** Он был сделан чтением кода, и по его результатам в
+этой же ветке уже применены правки (коммиты `862ebe4`, `9ec0bc8`). Сегодняшняя
+задача — проверить запуском, работают ли они на самом деле. Две из них работают не
+так, как заявлено: см. R-01 и R-02. Это ровно тот случай, о котором предупреждает
+задание: «защита, которая есть, но не работает».
 
-Остаётся то, что требует доступа к хостингу (раздел 7.5): подтвердить
-`SESSION_SECRET`/`ADMIN_USERS` на Netlify и Vercel, проверить заголовки
-на живом деплое и убедиться после деплоя, что заявки и вход в админку
-работают (изменился источник IP для rate limiting — F-02).
-
-Приведённые ниже разделы описывают состояние **до** исправлений; строки
-кода в описаниях находок соответствуют коммиту `f9d957f`.
+**Состояние репозитория после аудита.** Код не менялся. Тестовые артефакты
+(`.env.local`, `content/`) удалены, рабочее дерево чистое.
 
 ---
 
-## 7.1. Резюме
+## 1. Резюме
 
-### Стек
+### 1.1. Стек (этап 0)
 
-| Что | Значение | Где видно |
+| Что | Значение | Как установлено |
 |---|---|---|
-| Фреймворк | Next.js 16.3.2, App Router, plain JS (без TypeScript) | `package.json:17`, `app/` |
-| База данных | **Отсутствует** | — |
-| ORM / драйвер | Отсутствует | — |
-| Хранилище | Netlify Blobs / Vercel Blob / локальная ФС — драйвер выбирается в рантайме | `lib/store.js:20` |
-| Аутентификация | `iron-session` (зашифрованная cookie) + bcrypt, один админ-аккаунт из `ADMIN_USERS` | `lib/adminAuth.js` |
-| Хостинг | Двойной таргет: Netlify (основной) и Vercel (запасной) | `netlify.toml`, `vercel.json` |
-| Почта | Resend | `lib/mail.js` |
-| Внешние сервисы | Umami Cloud (аналитика, только прод-деплой) | `app/(site)/[locale]/layout.js:131-138` |
-| Контент блога | MDX-файлы из git (`blog-content/`), рендер `next-mdx-remote` | `lib/blog.js:17,241-268` |
-| Роутинг локалей | `proxy.js` (в Next 16 это бывший `middleware.js`) | `proxy.js` |
+| Язык | JavaScript (без TypeScript) | `jsconfig.json`, отсутствие `tsconfig.json` |
+| Фреймворк | Next.js **16.3.5**, App Router | `node_modules/next/package.json`, сборка прошла |
+| База данных | **отсутствует** | ни драйвера, ни ORM в `package.json`; всё хранение — JSON |
+| Хранилище | Netlify Blobs / Vercel Blob / локальная ФС | `lib/store.js:20`; в аудите работал fs-драйвер, файлы создавались в `content/` |
+| Аутентификация | `iron-session` (зашифрованная cookie) + bcrypt cost 12 | `lib/adminAuth.js`; в ответе `set-cookie: of_admin_session=Fe26.2*1*…` — формат `@hapi/iron` |
+| Хостинг | двойная цель: Netlify (основной) + Vercel | `netlify.toml`, `vercel.json` |
+| Почта | Resend | `lib/mail.js:3` |
+| Внешние API | Umami Cloud (аналитика, только прод-деплой) | `app/(site)/[locale]/layout.js:131` |
+| Контент блога | MDX из git, `next-mdx-remote` | `lib/blog.js:17` |
+| Роутинг локалей | `proxy.js` (в Next 16 — бывший `middleware.js`) | в выводе сборки: `ƒ Proxy (Middleware)` |
+| Тесты / CI | **отсутствуют полностью** | `package.json` без `test`, каталога `.github/` нет |
 
-### Карта точек ввода (sources)
+### 1.2. Карта точек ввода
 
-| Точка | Метод | Аутентификация | Что принимает |
+| Точка | Метод | Авторизация | Проверено запуском |
 |---|---|---|---|
-| `/api/inquiry` | POST | **нет** | JSON заявки: `name`, `email`, `phone`, `comment`, `subject`, `orderType`, honeypot `website`, токен формы |
-| `/api/inquiry/painting` | POST | **нет** | то же + `workId`, `paintingTitle`, `paintingImg`, `pageUrl` |
-| `/api/form-token` | GET | **нет** | — (выдаёт подписанный одноразовый токен) |
-| `/api/admin/login` | POST | **нет** (это и есть вход) | JSON `{login, password}` |
-| `/api/admin/logout` | POST | сессия | — |
-| `/api/admin/data` | GET / PUT | сессия | весь контент сайта (JSON) |
-| `/api/admin/blog-posts` | GET | сессия | — |
-| `/api/admin/upload` | POST | сессия | multipart-файл |
-| `/uploads/[file]` | GET | **нет** | имя файла из пути |
-| `/[locale]/blog/[slug]` | GET | **нет** | path-параметры `locale`, `slug` |
-| `/[locale]/cycles/[slug]` | GET | **нет** | path-параметры |
-| `/[locale]/zhyvopys?w=` | GET | **нет** | query-параметр `w` (id работы) |
-| `/admin/logs?month=&action=` | GET | сессия | query-параметры (оба через whitelist) |
-| Заголовки | — | — | `x-nf-client-connection-ip`, `x-forwarded-for`, `x-real-ip`, `user-agent`, `content-length`, `accept-language`, cookie `locale` |
-| Webhooks | — | — | **отсутствуют** |
+| `/api/inquiry` | POST | нет | да |
+| `/api/inquiry/painting` | POST | нет | да |
+| `/api/form-token` | GET | нет | да |
+| `/api/admin/login` | POST | нет (сам вход) | да |
+| `/api/admin/logout` | POST | сессия | да |
+| `/api/admin/data` | GET / PUT | сессия | да |
+| `/api/admin/blog-posts` | GET | сессия | да |
+| `/api/admin/upload` | POST | сессия | да |
+| `/uploads/[file]` | GET | нет | да |
+| `/[locale]/blog/[slug]` | GET | нет | да |
+| `/[locale]/cycles/[slug]` | GET | нет | да |
+| `/[locale]/zhyvopys?w=` | GET | нет | да (в браузере) |
+| `/admin/logs?month=&action=` | GET | сессия | да |
+| Заголовки: `x-vercel-forwarded-for`, `x-nf-client-connection-ip`, `x-forwarded-for`, `x-real-ip`, `user-agent`, `content-length`, `origin`, `accept-language` | — | — | да |
+| Cookie `locale` | — | — | нет (см. §5) |
+| Webhooks | — | — | отсутствуют |
 
-### Карта мест вывода (sinks)
+### 1.3. Карта мест вывода
 
-| Куда | Что туда попадает | Экранирование |
+| Куда | Что попадает | Проверено |
 |---|---|---|
-| Публичные страницы | контент из хранилища (тексты, названия работ, цены) | React (автоэкранирование) |
-| Админка `/admin` | то же + журнал событий | React |
-| Журнал `/admin/logs` | `detail`, `user`, `ip` из записей лога | React |
-| **HTML-письмо заявки** | имя, телефон, email, комментарий, тема, IP посетителя | `escapeHtml` (`lib/mail.js:58-65`) |
-| **HTML-письмо о новом устройстве / блокировке** | логин, IP, User-Agent | `escapeHtml` |
-| Заголовок `Reply-To` | email из формы | `sanitizeReplyTo` (`lib/mail.js:15-21`) |
-| Тема письма | `data.subject` / название работы | **не экранируется и не ограничивается** (F-03) |
-| JSON-LD | названия работ, циклов, статей | `JSON.stringify` + экранирование `<` (`components/JsonLd.js:4`) |
-| `<title>`, OG, meta | словари + frontmatter статей | Next (автоэкранирование) |
-| OG-картинки (PNG→JPEG) | заголовки, фон по пути из админки | Satori/sharp, не HTML |
-| `sitemap.xml`, `image-sitemap.xml` | заголовки и описания статей из git | `escapeXml` (`app/image-sitemap.xml/route.js:8-13`) |
-| Аудит-лог (блоб) | имя, email, телефон заявителя; логин попытки входа; IP; UA | **не ограничивается** (F-04) |
-| `console.log` функции | имя, email, телефон, длина комментария | — |
-| Экспорт CSV/Excel, PDF, мессенджеры | **отсутствуют** | — |
+| Публичные страницы | контент хранилища (названия, тексты, цены, контакты) | да — маркер сохранён через админку и найден в разметке |
+| JSON-LD | названия работ, описания | да |
+| Метатеги `<title>`, OG | словари + frontmatter | да |
+| Админка `/admin` | те же данные | да |
+| Журнал `/admin/logs` | `detail`, `user`, `ip` | да |
+| HTML-письма | поля заявки, логин, IP, User-Agent | частично (см. §5 — почта локально отключена) |
+| OG-картинки | заголовки + фон по пути из админки | да |
+| `sitemap.xml`, `image-sitemap.xml` | данные статей из git | да |
+| Аудит-лог (блоб/файл) | действия, IP, детали | да — читал `content/logs/2026-09.json` |
+| Экспорт CSV/Excel/PDF, мессенджеры | **отсутствуют** | неприменимо |
 
-### Хранилища
+### 1.4. Хранилища
 
-Единый драйвер `lib/store.js` (Netlify Blobs → Vercel Blob → ФС `content/`), тот же
-механизм переиспользуют `lib/auditLog.js`, `lib/rateLimit.js`, `lib/deviceTracking.js`,
-`lib/formGuard.js` (использованные nonce).
+Один драйвер `lib/store.js`, переиспользуется журналом, счётчиками лимитов,
+отпечатками устройств и погашенными nonce форм. Ключи: `data/site-data.json`
+(контент), `uploads/*` (фото), `logs/YYYY-MM` (журнал), `ratelimit/login/<ip>` и
+`ratelimit/inquiry/<ip>` (счётчики), `formnonce/<nonce>`, `known-devices/<login>`.
+Все шесть наблюдались в работе: файлы создавались в `content/` по ходу тестов.
 
-| Ключ | Что лежит | Кто пишет | Кто читает |
-|---|---|---|---|
-| `data/site-data.json` | весь контент сайта | админка (PUT) | все публичные страницы |
-| `uploads/*` | загруженные фото (всегда WebP) | админка | `/uploads/[file]`, `next/image` |
-| `logs/YYYY-MM` | журнал событий | все роуты | `/admin/logs` |
-| `ratelimit/login/<ip>`, `ratelimit/inquiry/<ip>` | счётчики | логин, формы | они же |
-| `formnonce/<nonce>` | погашенные токены форм | `guardInquiry` | он же |
-| `known-devices/<login>` | SHA-256 отпечатки (подсеть/24 + UA) | логин | логин |
+### 1.5. Роли
 
-### Роли и доступы
+Две: **гость** и **админ**. Регистрации, пользовательских аккаунтов и владения
+объектами нет — IDOR как класс неприменим. Проверено: все три `/api/admin/*`
+без сессии отдают 401, `/admin/logs` без сессии — 307 на `/admin`.
 
-Ролей две: **гость** и **админ**. Регистрации, пользовательских аккаунтов,
-владения объектами нет — значит, нет и классического IDOR. Всё под `/api/admin/*`
-проверяет сессию в самом обработчике (`isAuthed()` / `session.login`), а не только
-в UI; `/admin` и `/admin/logs` — серверная проверка в page-компоненте.
+### 1.6. Находки
 
-### Находки по уровням
-
-| Уровень | Количество |
+| Уровень | Кол-во |
 |---|---|
 | Критический (20–25) | 0 |
-| Высокий (12–19) | 2 |
-| Средний (6–11) | 5 |
+| Высокий (12–19) | 0 |
+| Средний (6–11) | 2 |
 | Низкий (1–5) | 3 |
 
-**Главный вывод.** Сценарий из раздела 2 ТЗ (бот через 16 секунд бьёт по форме
-SQL-инъекцией и перебором XSS) на этом сайте не срабатывает ни в одной точке:
-базы данных нет вообще, а весь пользовательский ввод, попадающий в HTML —
-и на страницах, и в письмах, — экранируется. Проблемы, которые нашлись, —
-не про «кавычку в поле имени», а про устаревшую зависимость, про поля, которые
-валидация пропустила, и про доверие к заголовкам.
+### 1.7. Топ-5
 
-### Топ-5, что закрыть первым
-
-1. **F-01** — `next@16.3.2` с двумя критическими CVE (в т.ч. неаутентифицированный RCE в Image Optimization API). Одна команда: `npm i next@^16.3.5 sharp@^0.35.4`.
-2. **F-02** — на Vercel заголовок `x-nf-client-connection-ip` подделывается клиентом, и защита от перебора пароля админки снимается целиком.
-3. **F-03** — `subject`, `pageUrl`, `paintingImg`, `workId` не проходят валидацию длины: неограниченная строка едет в тему письма и в журнал.
-4. **F-04** — журнал принимает неограниченный `login` из публичного `/api/admin/login` и хранит ПД заявителей без срока.
-5. **F-05** — ссылка в письме о заявке строится из тела запроса без проверки схемы: в письмо владельцу можно положить `javascript:`/`data:`/чужой домен.
+1. **R-01. Выход из админки не инвалидирует сессию.** После `POST /api/admin/logout` та же cookie продолжает пускать: `GET /api/admin/data` → **200**. Найдено только запуском.
+2. **R-02. Защита от перебора молча отключается на неизвестной площадке.** 8 неудачных входов подряд без блокировки, файл счётчиков не создан, в журнале `ip` пустой. Это регрессия от правки предыдущего аудита.
+3. **Нет ни одного теста и нет CI.** Всё, что сегодня проверено, завтра может отвалиться молча — сборка на хостинге тесты не запускает, потому что их нет.
+4. **R-03. CSP не блокирует внедрённый `onerror`** — подтверждено в Chromium, с контрольным образцом.
+5. **R-04/R-05.** Схема `data:` в ссылке контактов и неограниченная выдача токенов форм — оба низкого риска, но с наблюдаемым поведением.
 
 ---
 
-## 7.2. Сводная таблица
+## 2. Сводная таблица
 
-| ID | Категория | Где (файл:строка) | Защита | Вер. | Влияние | Риск | Уровень |
+| ID | Категория | Файл:строка | Защита | Вер. | Влияние | Риск | Уровень |
 |---|---|---|---|---|---|---|---|
-| F-01 | Уязвимые зависимости / RCE | `package.json:17`, `package.json:26` | Нет | 3 | 5 | 15 | **Высокий** |
-| F-02 | Обход rate limiting (подделка IP) | `lib/rateLimit.js:92-103` | Частичная | 3 | 4 | 12 | **Высокий** |
-| F-03 | Неполная валидация ввода | `lib/formGuard.js:18`, `app/api/inquiry/painting/route.js:140` | Частичная | 4 | 2 | 8 | Средний |
-| F-04 | Логирование: раздувание + ПД | `lib/auditLog.js:78-88`, `app/api/admin/login/route.js:56` | Частичная | 4 | 2 | 8 | Средний |
-| F-05 | Инъекция URL в HTML-письмо | `app/api/inquiry/painting/route.js:11-18,81-82,105,120` | Частичная | 3 | 3 | 9 | Средний |
-| F-06 | SSRF / чтение файлов из данных админки | `lib/ogImage.js:29-41` | Нет | 2 | 3 | 6 | Средний |
-| F-07 | Нет предпроверки размера тела | `app/api/admin/login/route.js:37`, `app/api/admin/upload/route.js:43` | Нет | 3 | 2 | 6 | Средний |
-| F-08 | CSP не гасит инъекцию обработчиков | `next.config.mjs:35` | Частичная | 1 | 4 | 4 | Низкий |
-| F-09 | Path traversal в чтении статей | `lib/blog.js:25-27,84-90` | Частичная | 2 | 2 | 4 | Низкий |
-| F-10 | CSRF: нет проверки Origin | `lib/adminAuth.js:13-18` | Частичная | 1 | 3 | 3 | Низкий |
+| R-01 | Инвалидация сессии | `lib/adminAuth.js:9-19`, `app/api/admin/logout/route.js:11` | Нет | 2 | 4 | 8 | Средний |
+| R-02 | Rate limiting отключается молча | `lib/rateLimit.js:97-115` | Частичная | 2 | 4 | 8 | Средний |
+| R-03 | CSP не гасит инъекцию обработчика | `next.config.mjs:42` | Частичная | 1 | 4 | 4 | Низкий |
+| R-04 | Схема `data:` в `href` | `components/Footer.js:10`, `kontakty/page.js:50`, `Header.js:174` | Частичная | 1 | 2 | 2 | Низкий |
+| R-05 | Токены форм без ограничения выдачи | `app/api/form-token/route.js:7` | Нет | 3 | 1 | 3 | Низкий |
 
 ---
 
-## 7.3. Детали по каждой находке
+## 3. Детали находок
 
-### [F-01] Критические CVE в next 16.3.2 и sharp 0.35.3
+### R-01. Выход из админки не инвалидирует сессию
 
-- **Категория:** уязвимые зависимости / удалённое выполнение кода
-- **Расположение:** `package.json:17` (`"next": "^16.3.2"`), `package.json:26` (`"sharp": "^0.35.3"`), `package-lock.json:6466`
-- **Уязвимый код:**
-
-```json
-"next": "^16.3.2",
-"sharp": "^0.35.3"
-```
-
-`npm audit` на текущем lock-файле:
-
-```
-next  16.0.0 - 16.3.2   Severity: critical
-  Unauthenticated Remote Code Execution on windows-hosted servers   GHSA-p293-qw3h-jr36
-  Unauthenticated RCE in Image Optimization API when AVIF files are used   GHSA-2xp9-vwfh-vxw4
-sharp  <0.35.4          Severity: high
-  Vulnerabilities in libheif   GHSA-rgj7-g3m4-5g8c
-js-yaml  4.0.0 - 4.3.1  Severity: high   (транзитивно через gray-matter)
-  maxTotalMergeKeys does not limit CPU use   GHSA-2883-xcg3-v3hh
-3 vulnerabilities (2 high, 1 critical)
-```
-
-- **Поток данных:** внешний — запрос к `/_next/image` (эндпоинт публичный, без авторизации).
-- **Сценарий атаки:** сканер определяет версию Next по характерным путям `/_next/static/…` и бьёт по публичному эндпоинту оптимизации изображений известным для этой версии способом. Аутентификация не нужна.
-- **Существующая защита:** нет. Диапазон `^16.3.2` **позволяет** установить исправленную 16.3.3+, но `package-lock.json` фиксирует именно 16.3.2, а Netlify собирает через `npm ci` — то есть на прод уезжает уязвимая версия.
-- **Оценка:** Вероятность 3 / Влияние 5 / Риск **15**.
-  Влияние 5 — RCE на сервере. Вероятность 3, а не 5, потому что реальная достижимость уязвимого кода зависит от площадки: и Netlify, и Vercel обслуживают оптимизацию картинок собственным Image CDN, а не кодом Next внутри функции. Проверить это по репозиторию нельзя — см. «Не проверено». Windows-CVE не применим: обе площадки на Linux. `sharp` не достижим через HEIF: загрузка отсеивает всё, кроме JPEG/PNG/WebP, по magic bytes (`app/api/admin/upload/route.js:16-35`) ещё до вызова sharp. `js-yaml` парсит только frontmatter статей из git.
-- **Исправление:**
-
-```bash
-npm i next@^16.3.5 sharp@^0.35.4
-npm audit fix          # подтянет js-yaml через gray-matter
-npm run lint && npm run build
-git add package.json package-lock.json
-```
-
-- **Как проверить:** `npm audit` должен дать `found 0 vulnerabilities`; `npm run build` — пройти с тем же числом страниц, что и до обновления (счётчик в конце вывода сборки).
-
----
-
-### [F-02] IP для rate limiting берётся из заголовка, который вне Netlify подделывает клиент
-
-- **Категория:** обход защиты от перебора / подделка источника запроса
-- **Расположение:** `lib/rateLimit.js:92-103`
+- **Категория:** аутентификация / управление сессиями
+- **Расположение:** `lib/adminAuth.js:9-19`, `app/api/admin/logout/route.js:11`
 - **Уязвимый код:**
 
 ```js
-export function getClientIp(request) {
-  const nf = request.headers.get("x-nf-client-connection-ip");
-  if (nf) return nf;
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const first = forwardedFor.split(",")[0].trim();
-    if (first) return first;
-  }
-  const real = request.headers.get("x-real-ip");
-  if (real) return real;
-  return process.env.NODE_ENV === "production" ? null : "local";
-}
-```
-
-- **Поток данных:** заголовок запроса → `getClientIp()` → ключ счётчика `ratelimit/login/<ip>` (`lib/rateLimit.js:19-21`) и `ratelimit/inquiry/<ip>` (`lib/formGuard.js:102`) → решение «блокировать или нет».
-- **Сценарий атаки:** атакующий отправляет каждый запрос со своим значением `x-nf-client-connection-ip` (или, если платформа его не ставит, со своим первым элементом в `x-forwarded-for`). Каждый запрос получает собственный счётчик, ни один не доходит до порога. Тем самым снимаются сразу три ограничения: 5 попыток до блокировки логина (`MAX_ATTEMPTS`), 6 заявок в час с адреса (`INQUIRY_LIMIT`) и письмо-уведомление о начавшемся переборе (`app/api/admin/login/route.js:61-62`, оно шлётся только в момент срабатывания блокировки, которая теперь не наступает). В журнале при этом останутся тысячи `login_fail` с разными выдуманными IP.
-- **Существующая защита:** частичная. На Netlify `x-nf-client-connection-ip` ставит сама платформа, и до ветки `x-forwarded-for` выполнение не доходит — там находка не применима. На Vercel (второй целевой деплой, `vercel.json` в репозитории) этот заголовок не ставит никто: он придёт ровно таким, каким его прислал клиент, и будет принят первым же условием. Правильная для Vercel ветка `x-forwarded-for` тоже небезопасна сама по себе: прокси дописывает реальный адрес в конец цепочки, а код берёт первый элемент, то есть присланный клиентом.
-- **Оценка:** Вероятность 3 / Влияние 4 / Риск **12**.
-  Вероятность 3: подстановка `X-Forwarded-For` — типовая проверка сканеров, но выигрыш есть только на Vercel-деплое. Влияние 4: bcrypt cost 12 и задержка 1 с на неудачу оставляют перебор дорогим, но единственный настоящий барьер — блокировка по IP — исчезает.
-- **Исправление:** источник адреса должен быть один и выбираться по площадке, а не по принципу «какой заголовок первым нашёлся».
-
-```js
-// lib/rateLimit.js
-// Один доверенный источник на площадку. Заголовок, который на этой
-// площадке не ставит прокси, принимать нельзя: его пришлёт клиент.
-const TRUSTED_IP_HEADER =
-  process.env.IS_NETLIFY_BUILD ? "x-nf-client-connection-ip" :
-  process.env.VERCEL ? "x-vercel-forwarded-for" :
-  null;
-
-export function getClientIp(request) {
-  if (process.env.NODE_ENV !== "production") return "local";
-  if (!TRUSTED_IP_HEADER) return null;       // неизвестная площадка — лимит по IP невозможен
-  const value = request.headers.get(TRUSTED_IP_HEADER);
-  return value ? value.split(",")[0].trim() : null;
-}
-```
-
-- **Как проверить:** два запроса на `/api/admin/login` с заведомо неверным паролем — один без лишних заголовков, второй с `x-nf-client-connection-ip: 203.0.113.7`. В журнале `/admin/logs` обе записи `login_fail` должны показывать **один и тот же** IP. До исправления — два разных.
-
----
-
-### [F-03] Часть полей заявки не проходит валидацию длины и уезжает в тему письма
-
-- **Категория:** неполная валидация ввода
-- **Расположение:** `lib/formGuard.js:18` (список лимитов), `app/api/inquiry/painting/route.js:80,84,140,162`, `app/api/inquiry/route.js:47`
-- **Уязвимый код:**
-
-```js
-// lib/formGuard.js:18 — поля subject, paintingTitle, paintingImg, pageUrl,
-// workId, orderType в этом списке отсутствуют
-const LENGTH_LIMITS = { name: 100, email: 200, phone: 50, comment: 2000, city: 100, area: 100, size: 100, plot: 500 };
-```
-
-```js
-// app/api/inquiry/painting/route.js:80,84,140
-const title = work?.title || data.paintingTitle || data.subject || "робота";
-const heading = work?.code ? `${work.code} «${title}»` : `«${title}»`;
-...
-subject: `Заявка: ${heading}`,
-```
-
-- **Поток данных:** тело POST `/api/inquiry/painting` → `data.subject` (клиент сайта его тоже шлёт — `components/OrderForm.js:28`, так что имя поля известно всем) → при ненайденном `workId` попадает в `title` → в **тему письма** и в `detail` аудит-лога (`:162`), который живёт в блобе бессрочно.
-- **Сценарий атаки:** бот шлёт заявку, где `subject` — строка на несколько десятков килобайт (в лимит тела 64 КБ помещается). Письмо приходит с нечитаемой темой, в журнале оседает такая же запись. Повторяя это шесть раз в час с адреса (и неограниченно, если получилось обойти лимит по F-02), можно надуть месячный блоб журнала до сотен мегабайт — а `logEvent` на каждое событие читает и переписывает его целиком (`lib/auditLog.js:64,89`).
-- **Существующая защита:** частичная. `checkBodySize` (`lib/formGuard.js:33-39`) ограничивает тело 64 КБ — это единственный барьер. Экранирование при выводе в HTML-тело письма работает (`escapeHtml`), то есть XSS здесь нет; речь именно о длине и о том, что тема письма — не HTML и через `escapeHtml` не проходит.
-- **Оценка:** Вероятность 4 / Влияние 2 / Риск **8**.
-  Вероятность 4: точка публичная, поле штатное, перебор граничных значений длины — типовое поведение сканера. Влияние 2: деградация журнала и почты, не компрометация.
-- **Исправление:** добавить поля в общий список лимитов и отдельно почистить тему письма от управляющих символов (страховка от инъекции заголовка, если транспорт когда-то сменится с JSON-API Resend на SMTP):
-
-```js
-// lib/formGuard.js:18
-const LENGTH_LIMITS = {
-  name: 100, email: 200, phone: 50, comment: 2000,
-  city: 100, area: 100, size: 100, plot: 500,
-  // Поля, которые едут в тему письма и в журнал: без лимита они
-  // ограничены только размером тела запроса.
-  subject: 200, paintingTitle: 200, paintingImg: 500, pageUrl: 500,
-  workId: 100, orderType: 50,
+// lib/adminAuth.js:9-19 — сессия полностью в cookie, серверного состояния нет
+const sessionOptions = {
+  cookieName: COOKIE,
+  password: process.env.SESSION_SECRET || "",
+  ttl: 60 * 60 * 24 * 7, // 7 днів
+  cookieOptions: { httpOnly: true, secure: …, sameSite: "lax", path: "/" },
 };
 ```
 
 ```js
-// lib/mail.js — рядом с sanitizeReplyTo
-// Тема письма не проходит через escapeHtml (это не HTML), поэтому
-// управляющие символы и перенос строки убираем здесь, в единственной
-// точке отправки.
-function sanitizeSubject(value) {
-  return String(value ?? "").replace(/[ -]/g, " ").trim().slice(0, 200);
-}
-// и в resend.emails.send: subject: sanitizeSubject(subject)
+// app/api/admin/logout/route.js:11
+session.destroy();   // очищает копию В БРАУЗЕРЕ, но не само значение cookie
 ```
 
-- **Как проверить:** POST на `/api/inquiry/painting` с `subject` из 5000 символов должен вернуть `400 {"ok":false,"error":"too_long"}`, а не 200. Отдельно: `sanitizeSubject("тема\r\nBcc: audit-marker@example.com")` возвращает строку без переносов.
-
----
-
-### [F-04] Журнал принимает неограниченные значения из публичных запросов и бессрочно хранит ПД
-
-- **Категория:** логирование / раздувание хранилища / хранение персональных данных
-- **Расположение:** `lib/auditLog.js:78-88`, `app/api/admin/login/route.js:56`, `app/api/inquiry/route.js:104`, `lib/formGuard.js:134,144,150`
-- **Уязвимый код:**
-
-```js
-// lib/auditLog.js:78-88 — обрезается только ua
-list.push({
-  ts: now.toISOString(),
-  action,
-  user: user || null,
-  ua: ua ? String(ua).slice(0, 256) : null,
-  detail: detail || null,        // <- длина не ограничена
-});
-```
-
-```js
-// app/api/admin/login/route.js:37,56 — login приходит из тела и никак не проверяется
-const { login, password } = await request.json().catch(() => ({}));
-...
-detail: `спроба входу як "${login || ""}"`,
-```
-
-```js
-// app/api/inquiry/route.js:104 — имя, телефон и email заявителя в журнал
-detail: `заявка від ${data.name}${contacts ? ` (${contacts})` : ""}`,
-```
-
-- **Поток данных:** (а) тело POST `/api/admin/login` → `login` → `detail` → блоб `logs/YYYY-MM`; (б) поля заявки → `detail`/`user` → тот же блоб; (в) `guardInquiry` пишет `user: data.email` **до** проверки длины (порядок в `lib/formGuard.js:131-160`: спам → nonce → лимит → валидация), поэтому в журнал попадает неограниченный email.
-- **Сценарий атаки:** пять запросов на `/api/admin/login` с полем `login` по 60 КБ — ровно столько разрешает лимит до блокировки IP, и каждый успевает записаться. Блокировка снимается через 15 минут, цикл повторяется; сменив IP (что тривиально при F-02), цикл повторяется сразу. Лимит в 5000 записей за месяц (`MAX_ENTRIES_PER_MONTH`) считает записи, а не байты. Побочный эффект: каждое последующее событие читает и переписывает разбухший блоб целиком, а страница `/admin/logs` пытается его отрисовать.
-- **Существующая защита:** частичная — `ua` обрезан до 256 символов, число записей за месяц ограничено, битый файл журнала карантинится. Ни длина `detail`/`user`, ни размер тела запроса на логине не ограничены.
-- **Оценка:** Вероятность 4 / Влияние 2 / Риск **8**.
-- **Исправление:** обрезать на входе в журнал — это единственная точка, через которую проходят все события:
-
-```js
-// lib/auditLog.js
-// Значения приходят и из публичных запросов, поэтому режем здесь, в
-// единственной точке записи, а не в каждом вызывающем роуте.
-const cap = (v, n) => (v == null ? null : String(v).slice(0, n));
-
-list.push({
-  ts: now.toISOString(),
-  action,
-  user: cap(user, 200),
-  ip: cap(ip, 64),
-  ua: cap(ua, 256),
-  detail: cap(detail, 500),
-});
-```
-
-Отдельно — по персональным данным: имя, телефон и email заявителя лежат в журнале
-бессрочно и видны на `/admin/logs`. Для работы журнала достаточно факта заявки;
-если контакты нужны — они уже есть в письме. Предлагаемая замена
-`app/api/inquiry/route.js:104`:
-
-```js
-detail: `заявка від ${data.name}`,   // телефон и email остаются в письме
-```
-
-- **Как проверить:** POST на `/api/admin/login` с `{"login":"A".repeat(100000),"password":"x"}` — запись в `content/logs/<месяц>.json` должна быть не длиннее ~500 символов в поле `detail`.
-
----
-
-### [F-05] Ссылка в письме о заявке строится из тела запроса без проверки схемы и домена
-
-- **Категория:** инъекция URL в HTML-письмо (фишинг в доверенном канале)
-- **Расположение:** `app/api/inquiry/painting/route.js:11-18` (`safeAbsoluteUrl`), `:81-82`, `:95`, `:105`, `:120`, `:125`
-- **Уязвимый код:**
-
-```js
-function safeAbsoluteUrl(path) {
-  if (!path) return null;
-  try {
-    return new URL(path, process.env.NEXT_PUBLIC_SITE_URL).toString();
-  } catch {
-    return null;           // отсекает только то, что вообще не URL
-  }
-}
-...
-const imageUrl = safeAbsoluteUrl(work?.img || data.paintingImg);
-const pageUrl  = safeAbsoluteUrl(work?.page || data.pageUrl);
-...
-? `<a href="${escapeHtml(pageUrl || imageUrl)}" ...>
-     <img src="${escapeHtml(imageUrl)}" ... />`
-```
-
-- **Поток данных:** тело POST `/api/inquiry/painting` → если `workId` не найден в хранилище (`resolveWork` вернул `null` — достаточно прислать чужой или пустой id), берутся `data.pageUrl` и `data.paintingImg` → `safeAbsoluteUrl` → `href`/`src` в HTML-письме, которое открывает владелец сайта.
-- **Проверено локально** (безвредно, без запросов наружу):
+- **Наблюдаемый результат:**
 
 ```
-"javascript:alert(1)"        -> "javascript:alert(1)"
-"data:text/html,<h1>x</h1>"  -> "data:text/html,<h1>x</h1>"
-"//evil.example/pay"         -> "https://evil.example/pay"
-"vbscript:msgbox(1)"         -> "vbscript:msgbox(1)"
-escapeHtml("javascript:alert(1)") -> "javascript:alert(1)"   // схему не трогает
+1) свежий вход                         HTTP 200
+2) сессия работает: GET /api/admin/data -> HTTP 200
+3) выход: POST /api/admin/logout       HTTP 200
+   set-cookie: of_admin_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=lax
+4) ТА ЖЕ cookie ПОСЛЕ выхода:
+   GET  /api/admin/data       -> HTTP 200   <-- сессия всё ещё действительна
+   GET  /api/admin/blog-posts -> HTTP 200
+   PUT  /api/admin/data       -> HTTP 400   <-- 400 = отказ валидации данных,
+                                                 то есть проверку авторизации запрос ПРОШЁЛ
 ```
 
-`new URL(x, base)` возвращает абсолютный URL для **любой** схемы, а не только для
-относительных путей: `base` используется лишь тогда, когда `x` относительный.
-`escapeHtml` здесь тоже не помогает — он экранирует кавычки и угловые скобки, то
-есть закрывает выход из атрибута (это работает правильно), но схему `javascript:`
-не трогает.
-
-- **Сценарий атаки:** злоумышленник шлёт заявку с несуществующим `workId` и своим `pageUrl`. Владелец получает письмо «Заявка по работе», в котором ссылка «Страница работы» и кликабельная миниатюра ведут на его домен. Это доверенный канал: письмо приходит с настоящего `MAIL_FROM`, выглядит штатно, и от ссылки в нём не ждут подвоха. `javascript:` в большинстве почтовых клиентов не исполнится, но `data:`-ссылка и внешний адрес открываются; `<img src>` с чужим доменом работает как маячок открытия письма.
-- **Существующая защита:** частичная. Экранирование HTML на месте (выход из атрибута невозможен), сама работа для письма честно поднимается из хранилища по `workId`, а не берётся из запроса (`:22-43` — это сделано правильно и осознанно). Не закрыто ровно то, что происходит, когда работа **не** нашлась: включается запасной путь на данные из тела.
-- **Оценка:** Вероятность 3 / Влияние 3 / Риск **9**.
-  Вероятность 3, а не 4-5: точка публичная, но поля `pageUrl` и `paintingImg` клиент сайта не отправляет (модалка шлёт только `workId` — `components/InquiryModal.js:73`), то есть имена полей видны только в серверном коде. Автоматический сканер их не подберёт, целевой злоумышленник — да. Влияние 3: фишинг/маячок в доверенном письме владельца, без доступа к данным.
-- **Исправление:** проверять схему и происхождение, а не только «парсится ли»:
-
-```js
-// Абсолютный URL относительно NEXT_PUBLIC_SITE_URL. Пропускаем только
-// http(s) и только свой домен либо хранилище Vercel Blob: адрес из тела
-// запроса иначе пришёл бы в письмо владельцу как есть, вместе со схемой.
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://iwankulik.com";
-const ALLOWED_HOSTS = new Set([new URL(SITE).host]);
-const ALLOWED_HOST_RE = /\.public\.blob\.vercel-storage\.com$/;
-
-function safeAbsoluteUrl(path) {
-  if (!path) return null;
-  try {
-    const url = new URL(path, SITE);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    if (!ALLOWED_HOSTS.has(url.host) && !ALLOWED_HOST_RE.test(url.host)) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-```
-
-- **Как проверить:** `safeAbsoluteUrl("javascript:alert(1)")`, `safeAbsoluteUrl("//evil.example/x")` и `safeAbsoluteUrl("data:text/html,<b>audit-marker</b>")` возвращают `null`; `safeAbsoluteUrl("/uk/zhyvopys#id")` по-прежнему возвращает адрес на своём домене. В письме при ненайденном `workId` строка «Страница работы» и миниатюра просто отсутствуют — это штатное поведение (`rows.filter` на `:102`).
-
----
-
-### [F-06] Генератор OG-картинок ходит по произвольному URL и пути из данных админки
-
-- **Категория:** SSRF / чтение файлов сервера
-- **Расположение:** `lib/ogImage.js:29-41`
-- **Уязвимый код:**
-
-```js
-async function readImageSource(src) {
-  if (/^https?:\/\//.test(src)) return fetchImage(src);        // произвольный внешний адрес
-  if (src.startsWith("/uploads/")) {
-    const name = path.basename(src);                            // здесь traversal закрыт
-    ...
-  }
-  try {
-    return await readFile(path.join(process.cwd(), "public", src));  // src не нормализуется
-  } catch {
-    return fetchImage(`${SITE_URL}${src}`);
-  }
-}
-```
-
-- **Поток данных:** PUT `/api/admin/data` → `paintings[].img`, `cycles[].img`, `blogCovers[slug]` → хранилище → `renderOgImage({ background })` при запросе `/{locale}/…/opengraph-image` (маршрут публичный, его дёргают краулеры соцсетей).
-- **Сценарий атаки:** учётная запись админа (или компрометация сессии) позволяет записать в `img` либо адрес во внутренней сети/метаданных облака, либо путь вида `../../…` — сервер сам сходит по нему при генерации карточки. Результат уходит в sharp, поэтому прямой выдачи содержимого нет; наблюдаемы факт обращения и разница во времени ответа.
-- **Существующая защита:** нет. `validateSiteData` (`lib/siteData.mjs:78-92`) проверяет, что `blogCovers` — плоская карта строк, но не содержимое строк. Для `/uploads/` traversal закрыт через `path.basename`, для остальных путей — нет.
-- **Оценка:** Вероятность 2 / Влияние 3 / Риск **6**.
-  Вероятность 2: нужна аутентификация админа. Это не «уязвимость, доступная посетителю», а недостающий рубеж на случай, если сессия админа окажется чужой.
-- **Исправление:**
-
-```js
-async function readImageSource(src) {
-  // Источник фона — значение из админки. Допускаем ровно три формы:
-  // адрес хранилища Vercel Blob, /uploads/<имя> и /assets/<имя>.
-  if (/^https?:\/\//.test(src)) {
-    const host = new URL(src).host;
-    if (!/\.public\.blob\.vercel-storage\.com$/.test(host)) return null;
-    return fetchImage(src);
-  }
-  if (src.startsWith("/uploads/")) { /* как есть */ }
-  if (!src.startsWith("/assets/")) return null;
-  const file = path.join(process.cwd(), "public", "assets", path.basename(src));
-  try { return await readFile(file); } catch { return fetchImage(`${SITE_URL}${src}`); }
-}
-```
-
-- **Как проверить:** сохранить в админке обложку со значением `/../../package.json` — `backgroundDataUri` должен вернуть `null` (карточка рисуется на тёмном фоне, `lib/ogImage.js:64-69`), а в консоли не должно быть попытки чтения вне `public/assets`.
-
----
-
-### [F-07] Нет предварительной проверки размера тела на `/api/admin/login` и `/api/admin/upload`
-
-- **Категория:** отказ в обслуживании / расход ресурсов функции
-- **Расположение:** `app/api/admin/login/route.js:37`, `app/api/admin/upload/route.js:43,48`
-- **Уязвимый код:**
-
-```js
-// login: тело разбирается целиком, до всякой проверки размера
-const { login, password } = await request.json().catch(() => ({}));
-```
-
-```js
-// upload: formData() буферизует весь запрос, лимит проверяется уже после
-const form = await request.formData();
-const file = form.get("file");
-if (file.size > MAX_UPLOAD_BYTES) { ... }
-```
-
-- **Поток данных:** тело запроса → память функции.
-- **Сценарий атаки:** многомегабайтное тело на `/api/admin/login` (публичная точка) целиком оседает в памяти функции и разбирается JSON-парсером до того, как сработает любая проверка. То же на `/upload`, но там нужна сессия.
-- **Существующая защита:** нет. Для форм заявок такая проверка **есть** и сделана правильно — `checkBodySize` (`lib/formGuard.js:33-39`) вызывается до `request.json()`, с объяснением в комментарии ровно про этот случай. На логине её просто не применили.
-- **Оценка:** Вероятность 3 / Влияние 2 / Риск **6**.
-- **Исправление:** переиспользовать готовую функцию — она уже экспортирована.
-
-```js
-// app/api/admin/login/route.js, первой строкой обработчика
-import { checkBodySize } from "@/lib/formGuard";
-...
-export async function POST(request) {
-  const oversized = checkBodySize(request);
-  if (oversized) return NextResponse.json(oversized.body, { status: oversized.status });
-  const ip = getClientIp(request);
-  ...
-```
-
-Для `/upload` — проверять `content-length` против `MAX_UPLOAD_BYTES` до `request.formData()`.
-
-- **Как проверить:** POST на `/api/admin/login` с телом 1 МБ отдаёт `413 payload_too_large`, и в журнале нет записи `login_fail`.
-
----
-
-### [F-08] CSP с `'unsafe-inline'` не погасит инъекцию `onerror`/`onload`
-
-- **Категория:** отсутствующий второй рубеж защиты
-- **Расположение:** `next.config.mjs:35`
-- **Код:**
-
-```js
-"script-src 'self' 'unsafe-inline' https://cloud.umami.is",
-```
-
-- **Ответ на прямой вопрос раздела 5.3 ТЗ:** **нет, не погасит.** `'unsafe-inline'` в `script-src` разрешает и inline-теги `<script>`, и inline-обработчики событий. Если бы экранирование где-то было пропущено, внедрённые `onerror=`/`onload=` отработали бы — CSP их не остановит.
-- **Существующая защита:** частичная, и компромисс задокументирован в самом файле (`next.config.mjs:1-32`): App Router вкладывает RSC-payload 47 инлайновыми скриптами, их содержимое меняется с каждой сборкой; хеши невозможны, а nonce требует отказа от статики на всех 106 страницах. Что политика держит: внешние скрипты (кроме `cloud.umami.is`), утечку данных (`connect-src` замкнут), подмену `<base>`, перенаправление формы, вложение сайта во фрейм. Остальные заголовки на месте: HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`.
-- **Оценка:** Вероятность 1 / Влияние 4 / Риск **4**.
-  Вероятность 1 — потому что активных XSS-точек в проекте не найдено: это отсутствие страховки, а не дыра. Влияние 4 — если страховка однажды понадобится, её не будет.
-- **Исправление:** оставить как есть, но зафиксировать цену решения. Если CSP как второй рубеж когда-нибудь понадобится (появится сторонний виджет, форма отзывов, пользовательский HTML) — перейти на nonce через `proxy.js`, приняв динамический рендер страниц. Вариант дешевле: не трогая политику, добавить `report-uri`/`report-to`, чтобы нарушения были видны.
-- **Как проверить:** `curl -sI https://iwankulik.com/uk | grep -i content-security-policy` — политика должна приходить как `Content-Security-Policy` (не Report-Only) на прод-деплое.
-
----
-
-### [F-09] Слаг и локаль статьи попадают в путь файловой системы без сверки с известным набором
-
-- **Категория:** path traversal (ограниченный)
-- **Расположение:** `lib/blog.js:25-27`, `:84-90`; вызов — `app/(site)/[locale]/blog/[slug]/page.js:122`
-- **Уязвимый код:**
-
-```js
-function postFilePath(locale, slug) {
-  return path.join(BLOG_DIR, locale, `${slug}.mdx`);
-}
-function readFrontmatter(locale, slug) {
-  const file = postFilePath(locale, slug);
-  if (!fs.existsSync(file)) return null;
-  const raw = fs.readFileSync(file, "utf8");
-```
-
-- **Поток данных:** path-параметры `/{locale}/blog/{slug}` → `getPostMeta(locale, slug)` → `path.join` → `fs.readFileSync`.
-- **Сценарий атаки:** закодированные разделители (`%2F`) в сегменте пути могут дать `slug`, выходящий за `blog-content/`. Достижимы только файлы с суффиксом `.mdx`; на продакшене вне `blog-content/` таких файлов нет.
-- **Существующая защита:** частичная и косвенная. `locale` проверяется в макете (`app/(site)/[locale]/layout.js:97`) и в OG-маршруте (`opengraph-image.js:35`), но в самой странице статьи — нет; `slug` не проверяется нигде до обращения к ФС. `lib/blogValidation.js` требует от слагов формат `^[a-z0-9]+(?:-[a-z0-9]+)*$`, но это проверка контента на сборке, а не входящего запроса.
-- **Оценка:** Вероятность 2 / Влияние 2 / Риск **4**.
-  Пропускает ли Next 16 `%2F` внутрь динамического сегмента — по репозиторию не проверить (см. «Не проверено»), поэтому вероятность 2, а не выше.
-- **Исправление:** сверять параметры с известным набором до обращения к диску — набор и так вычисляется рядом:
-
-```js
-// lib/blog.js
-const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;   // тот же формат, что требует blogValidation
-
-function readFrontmatter(locale, slug) {
-  // Оба значения приходят из адреса. Проверяем до path.join: иначе
-  // закодированный разделитель уводит чтение за пределы blog-content.
-  if (!locales.includes(locale) || !SLUG_RE.test(String(slug))) return null;
-  const file = postFilePath(locale, slug);
-  ...
-```
-
-- **Как проверить:** `readFrontmatter("uk", "../../package")` и `readFrontmatter("../..", "any")` возвращают `null`; обычная статья по-прежнему читается (`npm run build` даёт то же число страниц).
-
----
-
-### [F-10] Мутирующие admin-эндпоинты не проверяют `Origin`
-
-- **Категория:** CSRF
-- **Расположение:** `lib/adminAuth.js:13-18`, `app/api/admin/upload/route.js:37`, `app/api/admin/logout/route.js:6`
-- **Код:**
-
-```js
-cookieOptions: { httpOnly: true, secure: NODE_ENV === "production", sameSite: "lax", path: "/" },
-```
-
-- **Существующая защита:** частичная, но по сути достаточная. `SameSite=Lax` не отправляет cookie при межсайтовом POST; `PUT /api/admin/data` из HTML-формы вообще недостижим (форма умеет только GET/POST). Остаётся узкое окно «Lax + POST» в Chrome: cookie моложе двух минут отправляется и при межсайтовом POST — то есть теоретически достижимы `/api/admin/upload` и `/api/admin/logout` в первые две минуты после входа. CORS нигде не ослаблен, `Access-Control-Allow-Origin` не выставляется, server actions в проекте нет (`"use server"` не встречается).
-- **Оценка:** Вероятность 1 / Влияние 3 / Риск **3**.
-- **Исправление:** одна проверка на все мутирующие обработчики:
+- **Поток данных:** значение cookie выдаётся при входе → шифруется `iron-session`
+  (самодостаточный токен, серверной записи о сессии нет) → `destroy()` ставит
+  в ответе пустую cookie с `Max-Age=0` → браузер свою копию стирает, но **ранее
+  скопированное значение остаётся криптографически валидным до истечения `ttl`,
+  то есть 7 дней**.
+- **Сценарий атаки:** значение cookie однажды покинуло браузер — общий или чужой
+  компьютер, где админ «вышел» и ушёл; выгрузка профиля браузера; лог обратного
+  прокси; резервная копия. Через неделю после «выхода» этим значением по-прежнему
+  открывается вся админка и правится содержимое сайта. Кража через XSS здесь
+  исключена (`HttpOnly` подтверждён в ответе), поэтому вероятность невысокая — но
+  «выход» даёт ложную уверенность, что доступ отозван.
+- **Существующая защита и почему её мало:** есть ротация сессии при входе
+  (`login/route.js:113-117` — `destroy()` перед выдачей новой), `HttpOnly`,
+  `Secure`, `SameSite=Lax` и ограниченный `ttl`. Всё это защищает от кражи
+  cookie, но ни одно не даёт отозвать уже выданную: для этого нужна серверная
+  сторона, которой у stateless-сессии нет.
+- **Оценка:** Вероятность 2 / Влияние 4 / Риск **8**, средний.
+- **Исправление** — отметка времени в сессии и «эпоха» на стороне сервера,
+  которую сдвигает выход. Хранилище уже есть (то же, что у счётчиков лимитов):
 
 ```js
 // lib/adminAuth.js
-// Второй рубеж к SameSite=Lax: он оставляет двухминутное окно для
-// межсайтового POST со свежей cookie (поведение Chrome «Lax + POST»).
-export function isSameOrigin(request) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;                    // не браузерный запрос
-  return origin === new URL(request.url).origin;
+import { getCounterEntry, setCounterEntry } from "@/lib/rateLimit";
+
+const epochKey = (login) => `session-epoch/${login}`;
+
+// Момент, раньше которого выданные сессии недействительны.
+export async function revokeSessions(login) {
+  await setCounterEntry(epochKey(login), { since: Date.now() });
+}
+
+// Сессия действительна, только если выдана после последнего выхода.
+export async function isAuthed() {
+  const session = await getSession();
+  if (!session.login) return false;
+  const epoch = await getCounterEntry(epochKey(session.login));
+  return !epoch?.since || (session.issuedAt || 0) >= epoch.since;
 }
 ```
 
-- **Как проверить:** POST на `/api/admin/logout` с заголовком `Origin: https://evil.example` при валидной сессии отдаёт 403, без заголовка `Origin` — работает как прежде.
-
----
-
-## 7.4. Защищено
-
-Перечислено, чтобы при рефакторинге это не сломали.
-
-### SQL / NoSQL-инъекции (5.1) — **неприменимо**
-
-Базы данных в проекте нет: ни ORM, ни драйвера, ни строк подключения. Всё хранение —
-JSON в Netlify Blobs / Vercel Blob / локальной ФС (`lib/store.js:20`), доступ по
-фиксированным ключам. `$queryRawUnsafe`, `knex.raw`, `sequelize.query` и подобного
-в репозитории нет. Первый вектор из инцидента Calorize («SQL-инъекция в поле имя»)
-здесь не существует как класс.
-
-### XSS по контекстам (5.2)
-
-| Контекст | Состояние | Механизм |
-|---|---|---|
-| HTML-тело | Закрыт | React автоэкранирует. `dangerouslySetInnerHTML` ровно два: `components/JsonLd.js:8` (JSON с экранированным `<`) и `app/not-found.js:127` (константа + `JSON.stringify(locales)`). Пользовательских данных ни там, ни там нет |
-| HTML-атрибут | Закрыт | Ручной сборки HTML-строк на страницах нет; `{...userProps}` нигде не встречается |
-| JS-строка | Закрыт | `eval`, `new Function`, `setTimeout("строка")` отсутствуют. Инлайн `theme-init` (`layout.js:110-117`) — константа. `JSON.stringify` внутри `<script>` есть в двух местах, и в обоих `<` экранирован |
-| URL | Закрыт на страницах | Все `href` — либо `next/link` с шаблоном `/${locale}/…`, либо `tel:`/`mailto:` из данных админки. Схемы из пользовательского ввода в `href` на страницах не попадают (в письме — попадают, см. F-05) |
-| CSS | Закрыт | Инлайн-стили только со статическими значениями; пользовательский ввод в `style`/`url()` не попадает |
-| Markdown / rich text | **Неприменимо** | MDX пишет только владелец, файлы лежат в git. `blockJS: false` (`lib/blog.js:252`) выключен осознанно и задокументирован — на пользовательский контент этот путь не рассчитан и не используется |
-| SVG | **Неприменимо** | Загрузка SVG невозможна: `detectImageType` (`app/api/admin/upload/route.js:16-35`) принимает только JPEG/PNG/WebP по magic bytes |
-| Метаданные | Закрыт | `<title>`, OG, JSON-LD формирует Next с автоэкранированием; JSON-LD дополнительно экранирует `<` |
-
-**Stored XSS в «тихих» местах** — проверено отдельно, как требует раздел 9 ТЗ:
-
-- **Админка/CRM.** `/admin` и `/admin/logs` — React-компоненты, значения выводятся
-  как `{entry.detail}`, `{entry.user}`, `{entry.ip}` (`app/(admin)/admin/logs/page.js:90-94`).
-  XSS через журнал (в т.ч. через подставленный `login` или User-Agent атакующего) закрыт.
-- **HTML-письма.** Все три шаблона (заявка, заявка по работе, уведомления о входе
-  и о переборе) прогоняют каждое значение через `escapeHtml` — `lib/mail.js:58-65`,
-  и в HTML-теле, и в атрибутах. Проверено локально: `escapeHtml("<b>audit-marker</b> ' \" & < >")`
-  → `&lt;b&gt;audit-marker&lt;/b&gt; &#39; &quot; &amp; &lt; &gt;` — выход из атрибута
-  невозможен. Единственное, что не закрыто, — схема URL (F-05) и тема письма (F-03).
-- **Мессенджеры.** Уведомлений в Telegram и подобных нет.
-- **CSV / Excel / PDF.** Экспорта нет — **CSV formula injection неприменима**.
-
-**DOM-based XSS** — закрыт. `location.search` и `location.hash` читаются в трёх местах
-(`components/Header.js:31,83`, `components/Gallery.js:41,64`), и ни в одном значение не
-пишется в DOM: `Gallery` использует `?w=` только как ключ для `findIndex` по массиву
-работ, `Header` — как суффикс для `next/link`. `document.referrer` и `postMessage` не
-используются.
-
-### Сессии, cookies, аутентификация (5.4)
-
-- `iron-session`: cookie зашифрована, `httpOnly`, `secure` на проде, `SameSite=Lax`, TTL 7 дней (`lib/adminAuth.js:9-19`).
-- Токенов в `localStorage`/`sessionStorage` нет — там лежит только выбранная тема.
-- bcrypt cost 12 (`scripts/hash-password.mjs:12`); пароли в коде и в git отсутствуют.
-- Сравнение логина — константное по времени, с добиванием буферов (`lib/adminAuth.js:42-51`); для несуществующего логина всё равно выполняется `bcrypt.compare` с фиктивным хешем (`:56,64`) — по времени ответа не отличить «нет такого логина» от «неверный пароль».
-- Защита от перебора: 5 попыток → блок 15 минут → при повторе 1 час (`lib/rateLimit.js:12-14,122-134`), плюс фиксированная задержка 1 с на каждую неудачу и одинаковый текст ошибки.
-- Ротация сессии при входе: `session.destroy()` перед выдачей новой (`app/api/admin/login/route.js:103-107`).
-- Письмо при входе с нового устройства (отпечаток = SHA-256 от подсети /24 + UA, `lib/deviceTracking.js:15-22`) и письмо в момент срабатывания блокировки — причём ровно один раз, а не на каждую последующую попытку (`app/api/admin/login/route.js:61`).
-- Сброса пароля нет как функции — соответствующий класс проблем отсутствует.
-
-### CSRF (5.5)
-
-Мутаций через GET нет; все изменяющие операции — POST/PUT. `SameSite=Lax` + JSON-тело
-закрывают основной вектор. CORS нигде не ослаблен, server actions отсутствуют.
-Остаточное окно — F-10.
-
-### Валидация ввода (5.6)
-
-Серверная валидация есть и не подменяется клиентской: длины полей, формат email и
-телефона (`lib/formGuard.js:118-126`), ограничение тела 64 КБ **до** разбора JSON
-(`:33-39`), проверка структуры данных сайта (`lib/siteData.mjs:78-92`) — причём одна и та
-же для админки и для `scripts/push-data.mjs`, чтобы заливка не могла пронести то, что
-отсеивает админка. Пробелы — F-03 (не все поля в списке лимитов) и F-07 (логин).
-
-### Защита от ботов (5.7)
-
-Три независимых рубежа на публичных формах, все в одной точке входа `guardInquiry()`:
-
-1. **Honeypot** — поле `website`, скрытое стилями, а не атрибутом `hidden` (`components/OrderForm.js:122`, проверка — `lib/formGuard.js:85-87`).
-2. **Подписанный одноразовый токен формы** — HMAC-SHA256 от `timestamp + nonce`, сравнение `timingSafeEqual`, окно от 3 секунд до 2 часов, nonce гасится после первой удачной заявки (`lib/formGuard.js:45-83,142-146,166`). Комментарий на `:41-44` фиксирует, что nonce добавили именно после того, как обнаружили, что одним токеном проходили шесть заявок подряд. Отдельно отмечу правильную деталь: токен гасится **после** прохождения всех проверок (`:163-166`), иначе посетитель, опечатавшийся в телефоне, со второй попытки получал бы «отправлено» без письма.
-3. **Rate limit** — 6 заявок в час с адреса (`:15-16,101-113`).
-
-Ответ боту на honeypot и на неверный тайминг — одинаковый `200 {ok:true}`, чтобы не
-подсказывать, на чём его поймали. Массовой регистрации нет — регистрации нет вообще.
-
-### Загрузка файлов (5.8)
-
-- Тип — по magic bytes, не по расширению и не по `Content-Type` (`app/api/admin/upload/route.js:16-35`).
-- Каждое изображение пересобирается через sharp: EXIF-rotate → вписать в 2500×2500 → **всегда** WebP q85 (`:68-79`). Это уничтожает любую вложенную полезную нагрузку и метаданные; файл, который sharp не декодирует, отвергается.
-- Лимит 15 МБ.
-- Имя файла генерирует сервер: `Date.now()` + приведённое к `[a-z0-9.]` исходное имя (`lib/store.js:254-255`) — path traversal через имя невозможен.
-- Отдача: `path.basename` + whitelist расширений, всё остальное → 404 (`app/uploads/[file]/route.js:11-13`).
-- SVG и HTML загрузить нельзя в принципе.
-
-### Авторизация и доступ к объектам (5.9)
-
-- Пользовательских объектов нет → IDOR как класс отсутствует.
-- Каждый обработчик под `/api/admin/*` проверяет сессию сам, не полагаясь на маршрутизацию.
-- **Mass assignment закрыт осознанно и в нескольких местах:** цена нормализуется на сервере (`app/api/admin/data/route.js:55`); `cycle` принимается только как id существующего цикла, иначе `null` (`:57`); `id` и `slug` циклов берутся из предыдущей версии, клиент их переписать не может (`:64-66`); номера работ закрепляет сервер через `preserveCodes` (`:71`), поэтому перестановка или редактирование их не меняют. Для писем по работам данные поднимаются из хранилища по `workId`, а не берутся из тела запроса — с прямым комментарием, что так сделано на случай отправки формы в обход сайта (`app/api/inquiry/painting/route.js:22-24`).
-
-### SSRF и open redirect (5.10)
-
-Open redirect закрыт: `proxy.js` строит только относительные пути через
-`request.nextUrl.clone()` + присваивание `pathname` (`:89-92`), внешний адрес подставить
-нельзя. Параметров `redirect`/`next`/`returnUrl`/`callbackUrl` в проекте нет.
-Серверных `fetch` по пользовательскому URL нет; по URL из данных админки — есть, F-06.
-
-### Секреты и утечки (5.11)
-
-- В репозитории и в истории git нет ни одного `.env`, кроме `.env.example` (проверено `git log --all --diff-filter=A`); `.env*` в `.gitignore`.
-- Захардкоженных ключей нет. `DUMMY_HASH` (`lib/adminAuth.js:56`) — намеренная заглушка, не учётные данные.
-- Под `NEXT_PUBLIC_` только адрес сайта. В `next.config.mjs` через `env` инлайнятся два флага (`IS_NETLIFY_BUILD`, `IS_PRODUCTION_DEPLOY`) — секретов не содержат.
-- Клиентские компоненты `process.env` не читают вообще (проверено по всем файлам с `"use client"`).
-- `productionBrowserSourceMaps` не включён → source maps на прод не уезжают.
-- API не возвращает лишнего: хеши паролей нигде не отдаются, `/api/admin/data` доступен только по сессии, тексты ошибок обобщённые (`"bad data"`, `"save_failed"`), stack trace в ответах нет. В журнал пишется код и сообщение ошибки, обрезанные до 220 символов (`app/api/admin/data/route.js:97`), но не тело запроса — с прямым комментарием почему.
-- `robots.txt` закрывает `/admin` и `/api` (`app/robots.js:5`), макет админки помечен `robots: {index:false}`.
-
-### Логирование (5.13)
-
-Логируется всё, что нужно для разбора инцидента: неудачные входы (с IP, временем,
-маршрутом и использованным логином), срабатывания honeypot/тайминга/повторного
-nonce/лимита (`spam_blocked` с точной причиной), отклонённые сохранения с именем
-непрошедшей проверки, сбои записи и чтения хранилища, несостоявшиеся письма. Пароли и
-токены в журнал не попадают. Владелец видит это на `/admin/logs` с фильтрами по месяцу
-и действию; оба фильтра проходят whitelist (`app/(admin)/admin/logs/page.js:44-45`).
-Есть два активных оповещения на почту: вход с нового устройства и начавшийся перебор.
-Вывод журнала экранирован React. Остаточные проблемы — F-04.
-
----
-
-## 7.5. Не проверено
-
-| Что | Почему | Что нужно, чтобы проверить |
-|---|---|---|
-| Значения прод-переменных: длина и уникальность `SESSION_SECRET`, состав `ADMIN_USERS`, стойкость самого пароля | Нет доступа к настройкам Netlify/Vercel. Важно: `SESSION_SECRET` — ключ и для шифрования сессии, и для HMAC токена форм (`lib/formGuard.js:11`, `SECRET = ... \|\| ""`). Если он не задан, подпись считается пустым ключом, и токен форм подделывается | Подтверждение, что переменная задана на обеих площадках и длиннее 32 символов |
-| Реально ли отдаются заголовки безопасности на проде, и покрывают ли они статику `/assets/*`, `/og/*` | `headers()` из `next.config.mjs` применяется к ответам Next; файлы из `public/` на Netlify отдаёт статический слой — по комментарию в `netlify.toml:16-18` их задевает только этот файл, где сейчас задан лишь `Cache-Control`. CLAUDE.md прямо предупреждает, что локальный `next start` для таких выводов негоден | `curl -sI https://iwankulik.com/uk` и `curl -sI https://iwankulik.com/assets/hero-work.webp` на живом деплое |
-| Перезаписывает ли Netlify присланный клиентом `x-nf-client-connection-ip` | Поведение платформы по коду не видно. От этого зависит, применим ли F-02 к основному деплою или только к Vercel | Запрос к прод-деплою с подставленным заголовком и сверка IP в `/admin/logs` |
-| Пропускает ли Next 16 `%2F` внутрь динамического сегмента | От этого зависит реальная достижимость F-09. Локальная проверка запрещена тем же правилом CLAUDE.md про недостоверность `next start` | Запрос вида `/uk/blog/..%2F..%2Fsomething` к деплою |
-| Достижим ли уязвимый код Image Optimization (F-01) на Netlify/Vercel | Обе площадки обслуживают `/_next/image` собственным Image CDN; исполняется ли при этом код Next — по репозиторию не установить | Не требуется для действия: обновление всё равно обязательно |
-| Санирует ли Resend CRLF в теме письма | Поведение внешнего API. Сейчас проект на него полагается неявно | Достаточно исправления F-03 — тогда вопрос снимается |
-| Тесты из раздела 8 ТЗ | Тестового фреймворка в проекте нет (`package.json`: только `dev`/`build`/`start`/`lint`), локального окружения с заполненными переменными тоже. Проверил то, что можно проверить чистыми функциями: `safeAbsoluteUrl` и `escapeHtml` прогнаны на маркерных строках — результаты приведены в F-05 | `npm i -D vitest` + минимальный набор тестов (см. 7.6) |
-
----
-
-## 7.6. Общие рекомендации
-
-1. **Обновление зависимостей — сейчас.** `npm i next@^16.3.5 sharp@^0.35.4 && npm audit fix`.
-   Это единственная находка уровня «сделать до всего остального». Учитывая, что CI в
-   проекте нет (`CLAUDE.md`, раздел Deployment), стоит завести хотя бы ежемесячную
-   ручную проверку `npm audit` — либо один workflow на `npm audit --audit-level=high`.
-
-2. **Валидация — в одном списке.** `LENGTH_LIMITS` уже устроен правильно: один
-   объект, один цикл, одна точка входа `guardInquiry()`. Проблема только в том, что
-   новые поля туда не дописали. Практическое правило: поле, которое читает роут,
-   обязано быть в `LENGTH_LIMITS`. Если захочется формальную схему — `zod` здесь
-   избыточен, хватит списка.
-
-3. **Обрезка на границе хранилища.** `lib/auditLog.js` — единственная точка записи
-   в журнал; обрезать длины нужно там, а не в вызывающих роутах. Так следующий
-   добавленный тип события окажется защищён автоматически.
-
-4. **Один доверенный источник IP.** F-02 — частный случай общего правила: заголовок,
-   который на текущей площадке не выставляет прокси, доверия не заслуживает.
-   Выбирать источник по площадке, а не перебором.
-
-5. **Проверять схему URL, а не только парсинг.** F-05 и F-06 — одна и та же ошибка в
-   двух местах: `new URL()` считается проверкой, хотя он принимает любую схему.
-   Стоит завести общий `lib/safeUrl.js` c whitelist схем и хостов и звать его из
-   обоих мест.
-
-6. **CSP.** Компромисс с `'unsafe-inline'` обоснован и задокументирован — менять его
-   сейчас незачем. Но стоит записать в том же комментарии вывод из этого аудита:
-   защиты от внедрённых обработчиков событий у сайта нет, и появление любого места,
-   где выводится пользовательский HTML, потребует сначала перевести политику на nonce.
-
-7. **Автотесты безопасности.** Тестов в проекте нет совсем, а три функции здесь —
-   чистые и тестируются в пять строк. Минимальный набор, который стоит того:
-
-```js
-// safeUrl: схема и домен
-expect(safeAbsoluteUrl("javascript:alert(1)")).toBeNull();
-expect(safeAbsoluteUrl("//evil.example/x")).toBeNull();
-expect(safeAbsoluteUrl("/uk/zhyvopys#id")).toBe("https://iwankulik.com/uk/zhyvopys#id");
-
-// escapeHtml: маркер из раздела 8 ТЗ
-expect(escapeHtml("<b>audit-marker</b> ' \" & < >"))
-  .toBe("&lt;b&gt;audit-marker&lt;/b&gt; &#39; &quot; &amp; &lt; &gt;");
-
-// formGuard: длины и одноразовость токена
-expect(validateInquiryFields({ subject: "x".repeat(5000) })).toBe("too_long");
+```diff
+--- a/app/api/admin/login/route.js
+@@ session.login = user.login;
+   session.name = user.name;
++  session.issuedAt = Date.now();
+   await session.save();
+--- a/app/api/admin/logout/route.js
+@@ const user = session.login || null;
+   session.destroy();
++  if (user) await revokeSessions(user);
 ```
 
-8. **Персональные данные.** Имя, телефон и email заявителя сейчас лежат в журнале
-   бессрочно и видны на `/admin/logs`. Для журнала достаточно факта заявки — контакты
-   уже есть в письме. Заодно стоит решить, сколько месяцев хранить блобы `logs/*`:
-   сейчас они не удаляются никогда.
+Дальше `session.login` в обработчиках заменить на `await isAuthed()` —
+сейчас `data/route.js:28` и `upload/route.js:40` читают `session.login`
+напрямую, минуя любую такую проверку.
+
+- **Как проверить исправление:** повторить наблюдение выше — шаг 4 должен дать
+  `401` на всех трёх запросах. Тест приведён в §6 (`logout-revokes-session`).
 
 ---
 
-## 9. Критерии готовности
+### R-02. Защита от перебора молча отключается на неизвестной площадке
 
-- [x] Этап 0 выполнен, карта точек ввода/вывода в разделе 7.1
-- [x] Каждый пункт раздела 5 отмечен: 5.1 неприменимо · 5.2 защищено (кроме письма, F-05) · 5.3 F-08 · 5.4 защищено · 5.5 F-10 · 5.6 F-03, F-07 · 5.7 защищено · 5.8 защищено · 5.9 защищено · 5.10 F-06 · 5.11 защищено, F-01 · 5.12 F-01 · 5.13 F-04
-- [x] У каждой находки есть файл, строка, оценка риска и конкретное исправление
-- [x] Админка, email-шаблоны и экспорт проверены отдельно как места stored XSS (экспорта нет — отмечено как неприменимо)
-- [x] Отчёт сохранён в `SECURITY_AUDIT_REPORT.md`
-- [x] Код не изменялся
+- **Категория:** обход ограничения частоты запросов / отказ защиты
+- **Расположение:** `lib/rateLimit.js:97-115`
+- **Уязвимый код:**
+
+```js
+const TRUSTED_IP_HEADER = process.env.IS_NETLIFY_BUILD
+  ? "x-nf-client-connection-ip"
+  : process.env.VERCEL
+    ? "x-vercel-forwarded-for"
+    : null;                       // <-- ни та, ни другая площадка
+
+export function getClientIp(request) {
+  if (process.env.NODE_ENV !== "production") return "local";
+  if (!TRUSTED_IP_HEADER) return null;   // <-- дальше всё молча выключается
+  …
+}
+```
+
+`null` расходится по всей защите: `checkBlocked(null)` → `false`,
+`recordFailure(null)` → выход без записи (`lib/rateLimit.js:107-134`),
+`checkInquiryRateLimit(null)` → `true` (`lib/formGuard.js:107`).
+
+- **Наблюдаемый результат.** Два одинаковых сервера из одной сборки, отличие —
+  только переменная окружения площадки.
+
+Площадка опознана (`VERCEL=1`), заголовок на месте:
+
+```
+A. 7 попыток, доверенный заголовок тот же:
+   1..5 -> HTTP 401 ;  6 -> HTTP 429 ;  7 -> HTTP 429        <-- блокировка работает
+B. 7 попыток, подделываемый x-nf-client-connection-ip меняется:
+   1..7 -> HTTP 429                                          <-- подделка счётчик не сбрасывает
+```
+
+Площадка не опознана (ни `NETLIFY`, ни `VERCEL`), заголовки с адресом присланы все:
+
+```
+   1..8 -> HTTP 401   (восемь подряд, ни одной блокировки)
+   content/ratelimit.json для этого адреса НЕ СОЗДАН — ни одна попытка не учтена
+```
+
+Журнал того же прогона (`content/logs/2026-09.json`), колонка IP:
+
+```
+14:46:14 | login_fail | 203.0.113.9 | audit | спроба входу як "audit"   <-- площадка опознана
+…
+14:46:21 | login_fail | -           | audit | спроба входу як "audit"   <-- не опознана: адреса нет
+14:46:22 | login_fail | -           | audit | спроба входу як "audit"
+```
+
+- **Поток данных:** переменные окружения площадки → `TRUSTED_IP_HEADER` (вычисляется
+  один раз при загрузке модуля) → `getClientIp()` → ключ счётчика → решение
+  «блокировать или нет» и поле `ip` в журнале.
+- **Сценарий атаки:** перебор пароля без ограничений. Отдельно важно, что
+  **отказ бесшумный**: приложение поднимается, отвечает 200, журнал пишется —
+  просто без адресов. Понять, что защиты нет, по внешним признакам нельзя.
+  Триггеры: переезд на свой сервер или в Docker, любой сторонний хостинг
+  (Coolify, Render, Fly), запуск за собственным nginx, локальный прод-прогон.
+- **Существующая защита и почему её мало:** механизм блокировок полноценный —
+  5 попыток, 15 минут, эскалация до часа, письмо владельцу, задержка 1 с на
+  неудачу, bcrypt cost 12. Всё это проверено и работает (прогон A). Не хватает
+  одного: когда источник адреса неизвестен, система выбирает «пропустить» и
+  не сообщает об этом. Выбор «не блокировать всех разом» сам по себе разумен —
+  плох не он, а то, что он молчит.
+- **Честная оговорка:** на текущих площадках (Netlify, Vercel) находка не
+  срабатывает — там заголовок ставит платформа, что подтверждает прогон A.
+  Это риск конфигурации, а не дыра в сегодняшнем проде.
+- **Оценка:** Вероятность 2 / Влияние 4 / Риск **8**, средний.
+- **Исправление** — сделать отказ громким и дать самохосту явную настройку:
+
+```js
+// lib/rateLimit.js
+// Площадку можно задать явно — для своего сервера за известным прокси.
+const TRUSTED_IP_HEADER =
+  process.env.TRUSTED_IP_HEADER ||
+  (process.env.IS_NETLIFY_BUILD ? "x-nf-client-connection-ip" :
+   process.env.VERCEL ? "x-vercel-forwarded-for" : null);
+
+if (process.env.NODE_ENV === "production" && !TRUSTED_IP_HEADER) {
+  // Не падаем (сайт должен открываться), но молчать нельзя: без адреса
+  // отключены и блокировка подбора, и лимит заявок, и IP в журнале.
+  console.error(
+    "[rateLimit] Площадка не опознана и TRUSTED_IP_HEADER не задан: " +
+    "защита от перебора и лимит заявок ОТКЛЮЧЕНЫ. Задайте TRUSTED_IP_HEADER " +
+    "заголовком, который выставляет ваш прокси."
+  );
+}
+```
+
+Дополнительно — записать это состояние в журнал один раз при первом запросе
+(`action: "storage_error"` уже есть как образец), чтобы владелец увидел это
+на `/admin/logs`, а не только в логах функции.
+
+- **Как проверить исправление:** поднять сборку без `NETLIFY`/`VERCEL`/`TRUSTED_IP_HEADER`
+  — в выводе должна появиться строка `[rateLimit] … ОТКЛЮЧЕНЫ`. С заданным
+  `TRUSTED_IP_HEADER=x-forwarded-for` шестая неудачная попытка должна давать 429.
+  Тест — в §6 (`rate-limit-keys-on-trusted-header`).
+
+---
+
+### R-03. CSP не блокирует внедрённый обработчик `onerror`
+
+- **Категория:** заголовки безопасности / отсутствующий второй рубеж
+- **Расположение:** `next.config.mjs:42`
+- **Код:** `"script-src 'self' 'unsafe-inline' https://cloud.umami.is"`
+- **Наблюдаемый результат.** Политика снята с работающего приложения
+  (`curl` на `/uk`), тем же заголовком отдана страница с внедрённым обработчиком,
+  страница открыта в Chromium:
+
+```
+[ПОЛИТИКА ПРОЕКТА]
+  onerror-обработчик выполнился: ДА  (document.title = "HANDLER-RAN")
+  инлайн-<script> выполнился:    ДА
+  нарушений CSP в консоли:       0
+
+[КОНТРОЛЬ: та же политика без 'unsafe-inline']
+  onerror-обработчик выполнился: нет (document.title = "clean")
+  инлайн-<script> выполнился:    нет
+  нарушений CSP в консоли:       2
+    ! Refused to execute inline script because it violates … "script-src 'self' https://cloud.umami.is"
+    ! Refused to execute inline event handler because it violates … "script-src 'self' https://cloud.umami.is"
+```
+
+Контрольный образец важен: он доказывает, что тест рабочий и дело именно в
+директиве, а не в ошибке проверки.
+
+- **Поток данных:** заголовок из `headers()` → браузер → решение об исполнении
+  инлайн-кода.
+- **Сценарий атаки:** сам по себе — никакой. Точки внедрения в проекте нет
+  (см. §4), поэтому исполнять нечего. Значение находки в другом: если такая
+  точка появится, второго рубежа не будет.
+- **Существующая защита и почему её мало:** компромисс осознанный и подробно
+  задокументирован (`next.config.mjs:3-32`): App Router вкладывает RSC-payload
+  47 инлайновыми скриптами, их содержимое меняется с каждой сборкой, хеши
+  невозможны, nonce требует отказа от статики на всех 327 страницах. Политика
+  при этом реально держит многое — проверено тем же прогоном: внешний скрипт не
+  загрузится, `connect-src` замкнут, `frame-ancestors 'none'`, `base-uri 'self'`,
+  `form-action 'self'`, `object-src 'none'`. Не держит она ровно одно: инлайн.
+- **Оценка:** Вероятность 1 / Влияние 4 / Риск **4**, низкий.
+- **Исправление:** менять политику сейчас не нужно — цена (потеря статики на
+  327 страницах) выше выгоды при нулевом числе точек внедрения. Что стоит
+  сделать: (а) добавить `report-to`/`report-uri`, чтобы нарушения были видны;
+  (б) зафиксировать правило — появление любого места, где выводится
+  пользовательский HTML, требует сначала перевести политику на nonce.
+  Пункт (б) вынесен в предлагаемую правку `AGENTS.md`, §6.4.
+- **Как проверить:** скрипт `csp-blocks-inline-handler` из §6 — он падает,
+  если контрольный образец перестал блокироваться (значит, тест сломан), и
+  фиксирует текущее поведение политики проекта.
+
+---
+
+### R-04. Схема `data:` проходит в `href` ссылки контактов
+
+- **Категория:** XSS, контекст URL
+- **Расположение:** `components/Footer.js:10`, `app/(site)/[locale]/kontakty/page.js:50`, `components/Header.js:174`
+- **Код:** `<a href={contacts.instagram} target="_blank" rel="noopener noreferrer">Instagram</a>`
+- **Наблюдаемый результат.** Значение `contacts.instagram` записано через
+  настоящий API админки, затем снята разметка:
+
+```
+javascript: -> React сам обезвредил:
+  <a class="link" href="javascript:throw new Error(&#x27;React has blocked a javascript: URL
+     as a security precaution.&#x27;)" target="_blank" rel="noopener noreferrer">Instagram</a>
+
+data:       -> проходит как есть:
+  <a class="link" href="data:text/html,&lt;b&gt;audit-marker&lt;/b&gt;" …>Instagram</a>
+
+клик по этой ссылке в Chromium:
+  новых вкладок: 0 — браузер навигацию на data: не выполнил
+```
+
+- **Поток данных:** поле «Instagram» в админке → `PUT /api/admin/data`
+  (`validateSiteData` проверяет только наличие объекта `contacts`,
+  `lib/siteData.mjs:87`) → хранилище → `href` на каждой странице сайта.
+- **Сценарий атаки:** практически нереализуем. `javascript:` снимает React,
+  `data:` в верхнеуровневой навигации блокирует браузер (проверено). Записать
+  значение может только аутентифицированный админ.
+- **Существующая защита и почему её мало:** защищают два внешних слоя — React и
+  браузер, — а не код проекта. Оба могут измениться: React блокирует только
+  `javascript:`, политика браузеров по `data:` менялась и раньше. Схемы вроде
+  `vbscript:` или `blob:` не проверяет никто.
+- **Оценка:** Вероятность 1 / Влияние 2 / Риск **2**, низкий.
+- **Исправление:** в проекте уже есть готовая проверка — `lib/safeUrl.js`.
+  Достаточно пропустить через неё внешнюю ссылку:
+
+```diff
+--- a/lib/siteData.mjs
++@@ export function validateSiteData(data) {
+   const checks = [
+     …
+     ["contacts", () => Boolean(data.contacts)],
++    // Ссылка уходит в href на каждой странице — пускаем только http(s).
++    ["contacts.instagram", () => {
++      const v = data.contacts.instagram;
++      if (!v) return true;
++      try { const u = new URL(v); return u.protocol === "https:" || u.protocol === "http:"; }
++      catch { return false; }
++    }],
+```
+
+- **Как проверить:** `PUT /api/admin/data` с `contacts.instagram = "data:text/html,x"`
+  должен вернуть 400 с `save_rejected: contacts.instagram` в журнале; обычный
+  `https://instagram.com/...` — сохраняться. Тест в §6.
+
+---
+
+### R-05. Токены форм выдаются без ограничения
+
+- **Категория:** защита от ботов
+- **Расположение:** `app/api/form-token/route.js:7`
+- **Наблюдаемый результат:** восемь `GET /api/form-token` подряд с одного адреса —
+  восемь разных валидных токенов, ни одного отказа. Ни honeypot, ни лимит на
+  этот маршрут не распространяются.
+
+```
+первый : {"ts":1789656467791,"nonce":"fadeefa8…","sig":"de4c500f…"}
+второй : {"ts":1789656467800,"nonce":"d08f3bf6…","sig":"03af030e…"}   (каждый новый — ок)
+```
+
+- **Поток данных:** `GET /api/form-token` → HMAC от `ts+nonce` → клиент.
+- **Сценарий атаки:** бот набирает пул токенов заранее, выдерживает 3 секунды и
+  шлёт заявки, обходя проверку «слишком быстро». Дальше его всё равно
+  останавливает лимит 6 заявок в час с адреса — это проверено и работает
+  (см. §4). То есть самостоятельного ущерба вектор не даёт; он лишь снимает
+  один из трёх рубежей.
+- **Существующая защита и почему её мало:** одноразовость nonce и лимит заявок
+  закрывают последствия. Не закрыт сам маршрут: он бесплатно порождает записи
+  в хранилище только при использовании токена, так что и нагрузки почти нет.
+- **Оценка:** Вероятность 3 / Влияние 1 / Риск **3**, низкий.
+- **Исправление:** необязательное. Если делать — тот же счётчик, что у заявок,
+  с потолком повыше (скажем, 60 токенов в час на адрес), через уже имеющиеся
+  `getCounterEntry`/`setCounterEntry`.
+- **Как проверить:** 61-й запрос токена с одного адреса должен дать 429.
+
+---
+
+## 4. Защищено — с наблюдаемым подтверждением
+
+Всё ниже проверено настоящими запросами к работающему приложению. Ломать при
+рефакторинге нельзя.
+
+### 4.1. SQL / NoSQL-инъекции — **неприменимо**
+
+Базы данных нет: ни драйвера, ни ORM в `package.json`, ни строки подключения.
+Хранение — JSON по фиксированным ключам (`lib/store.js`). Проверка приведения
+типов подтверждает, что объект из тела запроса никуда как фильтр не уходит:
+`{"email":{"$ne":null}}` → `String()` → не проходит регулярное выражение:
+
+```
+POST /api/inquiry {"name":["a","b"],"email":{"$ne":null},"phone":12345}
+  -> {"ok":false,"error":"invalid_email"} HTTP 400
+```
+
+### 4.2. XSS по контекстам
+
+Маркер `<b>audit-marker</b>"'&<>` и строка выхода из атрибута
+`" onerror="document.title='X'` записаны через настоящий API админки и найдены
+на страницах:
+
+| Контекст | Результат | Доказательство |
+|---|---|---|
+| Тело HTML | экранировано | `<span class="works-card-title">&lt;b&gt;audit-marker&lt;/b&gt;&quot;&#x27;&amp;&lt;&gt;</span>` |
+| Атрибут | выхода нет | `…, <!-- -->&quot; onerror=&quot;document.title=&#x27;X&#x27;<!-- -->, …` |
+| `mailto:` | экранировано | `href="mailto:mark&lt;b&gt;audit-marker&lt;/b&gt;&quot;&#x27;&amp;&lt;&gt;@example.invalid"` |
+| JSON-LD | `<` → `<` | `"name":"<b>audit-marker</b…` — разорвать `</script>` нечем |
+| RSC-payload | `<` → `<` | `\"w\":\"<img src=x onerror=…>\"` |
+| URL (`javascript:`) | блокирует React | см. R-04 |
+| Метатеги | экранировано | маркер в `og:*` выходит в HTML-сущностях |
+
+Счётчик сырого тега по всему ответу: `grep -c '<img src=x onerror'` → **0**.
+
+Механизм: автоэкранирование React; `dangerouslySetInnerHTML` в проекте ровно два
+(`components/JsonLd.js:8` — JSON с экранированным `<`; `app/not-found.js:127` —
+константа), пользовательских данных в них нет.
+
+### 4.3. Stored XSS в «тихих» местах
+
+- **Админка и журнал.** `detail` записи содержит маркер; на `/admin/logs`
+  выводится как `заявка від &lt;b&gt;audit-marker&lt;/b&gt; …`.
+  Сырых вхождений `<b>audit-marker</b>` на странице: **0**.
+  Механизм: React, `app/(admin)/admin/logs/page.js:90-94`.
+- **Фильтры журнала.** `?month=../../etc/passwd&action=<b>audit-marker</b>` → 200,
+  вывод не изменился, сырого тега 0. Механизм: whitelist
+  (`logs/page.js:44-45` — `months.includes`, `ACTIONS.includes`).
+- **Письма.** Локально почта отключена намеренно (см. §5), поэтому по письмам —
+  частичная проверка: экранирование `escapeHtml` (`lib/mail.js:58-65`) проверено
+  на маркерных строках отдельно, результат
+  `&lt;b&gt;audit-marker&lt;/b&gt; &#39; &quot; &amp; &lt; &gt;` — выход из
+  атрибута невозможен. Готового письма целиком не видел.
+- **Экспорт CSV/Excel/PDF, уведомления в мессенджеры** — в проекте отсутствуют,
+  формульная инъекция **неприменима**.
+
+### 4.4. DOM-based XSS — защищено
+
+Payload `<img src=x onerror=document.title='DOM-XSS'>` подан через `?w=` и через
+`#hash`, страница открыта в Chromium:
+
+```
+через ?w=   : обработчик выполнился — нет; document.title не изменился; ошибок 0
+через #hash : обработчик выполнился — нет
+```
+
+Механизм: `?w=` читается через `URLSearchParams` и используется только как ключ
+для `findIndex` по массиву работ (`components/Gallery.js:64`), в DOM не пишется.
+`document.referrer` и `postMessage` в проекте не используются.
+
+### 4.5. Заголовки безопасности — присутствуют
+
+Снято с работающего приложения (`curl -sSD -`):
+
+```
+Strict-Transport-Security: max-age=63072000; includeSubDomains
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Content-Security-Policy: … frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+```
+
+Заголовок именно `Content-Security-Policy`, не Report-Only. Отдаётся и на
+страницах сайта, и на `/admin`, и на статике `/assets/*`. Оговорка по статике —
+в §5. Что политика **не** держит — R-03.
+
+### 4.6. Аутентификация и сессии
+
+```
+/api/admin/data  GET  без сессии -> 401
+/api/admin/data  PUT  без сессии -> 401
+/api/admin/upload POST без сессии -> 401
+/api/admin/blog-posts GET без сессии -> 401
+/admin/logs           без сессии -> 307 (на /admin)
+вход с верным паролем -> 200
+set-cookie: of_admin_session=Fe26.2*1*…; Secure; HttpOnly; SameSite=lax
+```
+
+Cookie зашифрована (`Fe26.2` — формат `@hapi/iron`), флаги на месте. Пароли —
+bcrypt cost 12. Сравнение логина константное по времени с фиктивным хешем
+(`lib/adminAuth.js:42-64`). Токенов в `localStorage` нет. Отзыв сессии — R-01.
+
+### 4.7. CSRF — защищено
+
+```
+PUT  /api/admin/data   + Origin: https://evil.example -> 403
+POST /api/admin/logout + Origin: https://evil.example -> 403
+POST /api/admin/upload + Origin: https://evil.example -> 403
+POST /api/admin/login  + Origin: https://evil.example -> 403
+GET  /api/admin/data   + Origin: http://localhost:3000 -> 200  (контроль)
+```
+
+Механизм: `isSameOrigin()` (`lib/adminAuth.js:25-38`) плюс `SameSite=Lax`.
+Мутаций через GET нет, CORS нигде не ослаблен, server actions отсутствуют.
+
+### 4.8. Валидация и ограничение размера — защищено
+
+```
+subject 5000 символов        -> {"ok":false,"error":"too_long"}          HTTP 400
+тело запроса 70 КБ           -> {"ok":false,"error":"payload_too_large"} HTTP 413
+email "не-email"             -> {"ok":false,"error":"invalid_email"}     HTTP 400
+массив/объект вместо строки  -> {"ok":false,"error":"invalid_email"}     HTTP 400
+битый JSON                   -> {"ok":false,"error":"missing_fields"}    HTTP 400
+```
+
+Механизм: `lib/formGuard.js:18-24,33-39,118-126`. Проверка размера идёт **до**
+разбора тела — подтверждается тем, что 70 КБ отвергаются с 413, а не с ошибкой
+валидации полей.
+
+### 4.9. Защита от ботов — работает, подтверждено журналом
+
+Ответ на все «тихие» отказы одинаков — `200 {"ok":true}` — чтобы не подсказывать
+боту, на чём он пойман. Это значит, что по коду ответа отличить блокировку от
+приёма нельзя; проверил по журналу:
+
+| Что отправлено | Ответ | Запись в журнале |
+|---|---|---|
+| honeypot `website` заполнен | 200 `{ok:true}` | `spam_blocked … honeypot` |
+| без токена формы | 200 `{ok:true}` | `spam_blocked … timing` |
+| токен + отправка быстрее 3 с | 200 `{ok:true}` | `spam_blocked … timing` |
+| подделанная подпись | 200 `{ok:true}` | `spam_blocked … timing` |
+| повтор тем же токеном | 200 `{ok:true}` | `spam_blocked … nonce_reused` |
+| честная заявка (токен + пауза 4 с) | 502 `mail_failed` | проверки пройдены |
+
+Лимит заявок — ровно 6 в час с адреса:
+
+```
+заявка 1..6 -> HTTP 502 (mail_failed: проверки пройдены, почта локально отключена)
+заявка 7    -> {"ok":false,"error":"rate_limit"} HTTP 429
+заявка 8    -> {"ok":false,"error":"rate_limit"} HTTP 429
+```
+
+Токены одноразовые и каждый раз новые (наблюдение в R-05). Капчи нет — её роль
+выполняют honeypot + подписанный токен + лимит.
+
+### 4.10. Загрузка файлов — защищено
+
+```
+текстовый файл с именем .png и Content-Type: image/png
+  -> {"ok":false,"error":"Непідтримуваний формат файлу…"} HTTP 400
+SVG со <script> внутри
+  -> {"ok":false,"error":"Непідтримуваний формат файлу…"} HTTP 400
+настоящий PNG с именем ../../../etc/passwd.png
+  -> 200, url: /uploads/1789656554356-..-..-..-etc-passwd.webp
+```
+
+На диске (`ls content/uploads/`): файл лежит **внутри** каталога загрузок,
+разделители пути вырезаны. `file` показывает `RIFF … Web/P image, VP8, 40x40` —
+то есть файл пересобран через sharp, исходные байты не сохранены.
+Механизм: magic bytes (`upload/route.js:16-35`), пересборка sharp (`:82-86`),
+имя генерирует сервер (`lib/store.js:254-255`).
+
+Отдача файлов:
+
+```
+/uploads/..%2f..%2fpackage.json -> 404
+/uploads/....//package.json     -> 404 (после нормализации)
+/uploads/meta.json              -> 404 (расширение не в whitelist)
+```
+
+### 4.11. Авторизация, IDOR, mass assignment — защищено
+
+Пользовательских объектов нет → IDOR **неприменим**. Mass assignment проверен
+настоящим `PUT` с подменёнными полями:
+
+```
+slug цикла : прислали "podmenen-zloumyshlennikom" -> сохранено "don-quixote"  ОТБИТО
+код работы : прислали "К-999"                     -> сохранено "К-005"        ОТБИТО
+цикл работы: прислали несуществующий id           -> сохранено null           ОТБИТО
+цена       : прислали "€ 1 evil"                  -> сохранено "1"            НОРМАЛИЗОВАНО
+```
+
+Механизм: `app/api/admin/data/route.js:53-71`. Полей `role`/`isAdmin` в модели
+нет — ролей всего две, и роль не хранится в данных.
+
+### 4.12. SSRF и open redirect — защищено
+
+SSRF проверен живым слушателем на `127.0.0.1:9999`, подставленным в обложку
+блога и в картинку работы через настоящий API админки:
+
+```
+A. обложка = http://127.0.0.1:9999/ssrf-probe
+   /uk/blog/sejm-1991/opengraph-image-… -> 200, image/jpeg, 22629 байт
+   /uk/zhyvopys/opengraph-image-…       -> 200, image/jpeg, 89901 байт
+   обращений к 127.0.0.1:9999: 0 — сервер по внутреннему адресу НЕ пошёл
+
+B. КОНТРОЛЬ: обложка = /assets/kulik-chess-02.webp
+   -> 200, 92938 байт (фон отрисован — механизм рабочий, тест не «зелёный по случайности»)
+
+C. traversal: обложка = /../../package.json
+   -> 200, 22629 байт (фон пропущен, падения нет)
+```
+
+Контрольный прогон B принципиален: он доказывает, что тест зафиксировал бы
+обращение, если бы оно было. Механизм: `lib/safeUrl.js` + нормализация пути
+в `lib/ogImage.js:29-49`.
+
+Open redirect — все редиректы остаются на своём домене:
+
+```
+//evil.example/x      -> 308 http://localhost:3000/evil.example/x  -> итог 404
+/\evil.example        -> 308 http://localhost:3000/evil.example
+/https://evil.example -> 308 http://localhost:3000/https:/evil.example
+```
+
+Параметров `redirect`/`next`/`returnUrl` в проекте нет.
+
+### 4.13. Path traversal в блоге — защищено
+
+```
+/uk/blog/..%2f..%2f..%2fpackage        -> 404
+/uk/blog/..%252f..%252fpackage         -> 404
+/uk/blog/%2e%2e%2f%2e%2e%2fpackage     -> 404
+/uk/blog/....//....//package           -> 308 -> итог 404
+/..%2f..%2fetc%2fpasswd/blog/sejm-1991 -> 307 (на локаль) -> 404
+/uk/blog/sejm-1991                     -> 200 (контроль)
+```
+
+Механизм: сверка локали и слага с известным набором до обращения к ФС
+(`lib/blog.js:29-38,92`).
+
+### 4.14. Секреты и утечки — защищено
+
+```
+поиск по .next/static: SESSION_SECRET(0) RESEND_API_KEY(0) ADMIN_USERS(0)
+                       значение секрета(0) bcrypt-хеш(0)
+source maps в проде  : 0 файлов *.map
+.env в истории git   : только .env.example
+```
+
+Ошибки API обобщённые, без stack trace: `{"ok":false,"error":"missing_fields"}`,
+`405` на неверный метод, `404` на несуществующий маршрут. `robots.txt` закрывает
+`/admin` и `/api`.
+
+### 4.15. Зависимости — защищено
+
+```
+npm audit -> found 0 vulnerabilities
+next 16.3.5, sharp 0.35.4, js-yaml 4.3.2
+```
+
+### 4.16. Логирование — работает, с оговоркой
+
+Журнал пишет отклонённые и подозрительные запросы с причиной: `spam_blocked`
+(`honeypot` / `timing` / `nonce_reused` / `rate_limit`), `login_fail`,
+`save_rejected`, `mail_failed`, `storage_error`. Паролей и токенов в журнале
+нет — проверено чтением `content/logs/2026-09.json` после всех тестов.
+Значения обрезаны (`lib/auditLog.js:60-88`). Вывод в админке экранирован (§4.3).
+
+Оговорка: восстановить по журналу, **что делал атакующий**, можно только пока
+известен его адрес. В прогоне без доверенного заголовка все записи легли с
+`ip = "-"` — см. R-02.
+
+---
+
+## 5. Не проверено
+
+| Что | Почему | Что нужно |
+|---|---|---|
+| Готовое HTML-письмо целиком | `RESEND_API_KEY` намеренно не задавался, чтобы не слать запросы наружу. Экранирование проверено на функции, собранное письмо — нет | Тестовый ключ Resend и адрес-приёмник, либо подменный транспорт в тестах |
+| Доходят ли заголовки безопасности до статики **на Netlify** | Локально `next start` отдаёт CSP и на `/assets/*`, но на Netlify эти файлы отдаёт статический слой, а не Next — об этом прямо сказано в `netlify.toml:16-18`. Локальный прогон эту разницу не воспроизводит | `curl -sI https://iwankulik.com/assets/…` на живом деплое |
+| Перезаписывает ли Netlify присланный клиентом `x-nf-client-connection-ip` | Поведение платформы. Прогон A подтвердил только логику приложения при заданном заголовке | Запрос к прод-деплою с подставленным заголовком и сверка IP в `/admin/logs` |
+| Константность времени сравнения учётных данных | Измерить в контейнере с шумным планировщиком достоверно нельзя: разброс сети и bcrypt перекрывает разницу | Стенд с прямым замером на тысячах итераций |
+| Значения переменных прода (`SESSION_SECRET`, `ADMIN_USERS`) | Нет доступа к настройкам хостинга. Важно: `SESSION_SECRET` — ключ и для сессии, и для HMAC токена форм (`lib/formGuard.js:11`, `SECRET = … \|\| ""`). Пустое значение сделало бы токены подделываемыми | Подтверждение, что переменная задана на обеих площадках и длиннее 32 символов |
+| Cookie `locale` как точка ввода | Значение проверяется через `locales.includes` (`proxy.js:81`), но отдельного прогона с подставленной cookie я не делал | Запрос с `Cookie: locale=<произвольное>` и проверка Location |
+| Поведение `notFound()` и границ 404 | `CLAUDE.md` прямо предупреждает, что локальный `next start` моделирует это неверно, и выводы отсюда уже дважды были ошибочными | Проверка на деплое |
+| Поведение под нагрузкой (гонки при записи счётчиков) | Однопоточный прогон гонок не воспроизводит; `lib/atomicWrite.js:15-18` сам признаёт, что двух одновременных писателей не решает | Нагрузочный прогон параллельных заявок |
+
+---
+
+## 6. Что оставить после себя
+
+Сегодняшние наблюдения — снимок одного дня. Ниже — что предлагаю внести, чтобы
+защита не развалилась молча. **Код не меняю до вашего подтверждения**; всё
+готово к применению.
+
+### 6.1. Тесты — падают, если защиту убрать
+
+Сейчас в проекте **ни одного теста**. Предлагаю `vitest` (запускается без
+сборки, ставится одним пакетом) и два уровня:
+
+**Быстрые, без сервера** — на чистые функции:
+
+| Тест | Падает, если |
+|---|---|
+| `safe-url-rejects-schemes` | из `lib/safeUrl.js` убрать проверку протокола или хоста |
+| `escape-html-covers-all` | из `escapeHtml` убрать любой из пяти символов |
+| `mail-subject-strips-control` | убрать чистку темы письма |
+| `audit-log-caps-length` | убрать обрезку `detail`/`user` |
+| `blog-slug-guard` | убрать сверку слага с `SLUG_RE` |
+| `site-data-rejects-bad-url` | (после R-04) убрать проверку `contacts.instagram` |
+
+**Против поднятого приложения** — повторяют ровно то, что я делал руками:
+
+| Тест | Падает, если |
+|---|---|
+| `admin-requires-session` | снять проверку сессии с любого `/api/admin/*` |
+| `csrf-origin-rejected` | убрать `isSameOrigin` из любого мутирующего маршрута |
+| `logout-revokes-session` | **падает сейчас** — фиксирует R-01 |
+| `rate-limit-keys-on-trusted-header` | вернуть перебор подделываемых заголовков |
+| `rate-limit-not-silently-off` | **падает сейчас** — фиксирует R-02 |
+| `honeypot-and-timing-blocked` | убрать honeypot или проверку тайминга (проверяет **журнал**, а не код ответа — иначе тест зелёный на принятом спаме) |
+| `inquiry-rate-limit-6` | поднять или убрать лимит заявок |
+| `body-size-precheck` | убрать `checkBodySize` |
+| `upload-rejects-non-image` | убрать проверку magic bytes |
+| `upload-filename-sanitised` | убрать нормализацию имени |
+| `stored-xss-escaped` | заменить вывод на `dangerouslySetInnerHTML` |
+| `ssrf-blocked` | убрать whitelist хостов в `lib/safeUrl.js` — **с контрольным прогоном**, иначе тест зелёный и когда фон вообще не грузится |
+| `csp-blocks-inline-handler` | фиксирует R-03 и падает, если сломан контрольный образец |
+
+Два принципа, без которых такие тесты бесполезны и о которых я споткнулся
+сегодня сам:
+- **Проверять следствие, а не код ответа.** Спам-фильтр отвечает `200 {ok:true}`
+  и на блокировку, и на приём. Тест обязан смотреть в журнал.
+- **Каждый «негативный» тест — с контрольным образцом.** Мой первый SSRF-тест
+  показал «0 обращений» только потому, что маршрут отдавал 404. Без прогона B
+  я бы записал в отчёт ложное «защищено».
+
+### 6.2. CI на каждое изменение
+
+Каталога `.github/` нет. Предлагаю `.github/workflows/ci.yml`: `npm ci` →
+`npm run lint` → `npm test` → `npm audit --audit-level=high` → `npm run build`,
+на `push` и `pull_request`.
+
+**Ловушка, которую вы просили проверить отдельно, здесь реальна.** Команда
+сборки на хостинге тесты не запускает и запускать не будет:
+- Netlify: секции `[build]` в `netlify.toml` нет намеренно (`netlify.toml:1-3`),
+  команда задана в Netlify UI и из репозитория не видна;
+- Vercel: `buildCommand` в `vercel.json` не задан, то есть используется
+  `next build`.
+
+Значит, если тесты появятся, но CI не будет, они не выполнятся никогда — деплой
+пройдёт мимо них. Поэтому CI обязателен как отдельный шаг, а в `package.json`
+нужен скрипт `test`, которого сейчас нет.
+
+### 6.3. Слежение за зависимостями
+
+`.github/dependabot.yml` на `npm` и `github-actions`, еженедельно.
+Отдельно: у GitHub оповещения Dependabot **не работают, пока не включён граф
+зависимостей** — это переключатель в Settings → Code security, его нужно
+включить руками, иначе файл будет лежать, а писем не будет. Плюс
+`npm audit --audit-level=high` в CI как страховка, не зависящая от настроек
+репозитория.
+
+### 6.4. Что считать доверенными данными
+
+Предлагаю дописать в `AGENTS.md` раздел, фиксирующий модель доверия — сейчас она
+нигде не записана, и следующий человек может подключить внешний источник туда,
+где весь расчёт на этом и держится:
+
+- **Не доверяем:** тело и заголовки любого запроса к `/api/inquiry*`,
+  `/api/admin/login`, `/api/form-token`; path- и query-параметры; cookie `locale`.
+- **Доверяем условно (пишет только админ, но проверять всё равно нужно):**
+  содержимое `data/site-data.json` — попадает в `href`, в пути чтения файлов и в
+  адреса серверных запросов. Именно здесь живут R-04 и ограничения `lib/safeUrl.js`.
+- **Доверяем:** `blog-content/*.mdx` — файлы из git, пишет только владелец.
+  На этом прямо построено `blockJS: false` (`lib/blog.js:252`). **Если статьи
+  когда-нибудь начнут приходить извне — из CMS, от автора через форму, импортом —
+  `blockJS: false` придётся убрать первым делом:** сейчас MDX исполняет
+  JS-выражения на сервере.
+- **Адрес клиента** доверенный ровно настолько, насколько его выставляет площадка;
+  единственный источник — `TRUSTED_IP_HEADER` (см. R-02).
+
+---
+
+## 7. Итог
+
+Приложение держится хорошо: из 16 проверенных классов атак 11 закрыты и это
+подтверждено наблюдением, 3 неприменимы по устройству проекта (нет БД, нет
+экспорта, нет пользовательских объектов), критических и высоких находок нет,
+зависимости чистые.
+
+Две находки среднего уровня — обе такие, каких чтение кода не даёт: механизм
+на месте и выглядит правильно, но при запуске ведёт себя иначе. Выход из
+админки возвращает 200 и гасит cookie в браузере, а старое значение продолжает
+пускать. Лимитер написан подробно и с комментариями, а на неопознанной площадке
+не считает ничего и молчит об этом. Обе найдены только потому, что приложение
+было поднято и опрошено настоящими запросами.
+
+Отдельно стоит третий пункт топ-5, который не является уязвимостью: тестов нет
+вообще, CI нет, а сборка на хостинге тесты не запускает по устройству. Всё
+проверенное сегодня держится на том, что никто это не сломает — а узнать о
+поломке будет неоткуда.
