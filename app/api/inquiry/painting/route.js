@@ -5,17 +5,10 @@ import { logEvent } from "@/lib/auditLog";
 import { guardInquiry, checkBodySize } from "@/lib/formGuard";
 import { getData } from "@/lib/store";
 import { formatPrice } from "@/lib/price";
-
-// Абсолютний URL відносно NEXT_PUBLIC_SITE_URL; для вже абсолютних
-// (напр. Vercel Blob) повертає їх без змін. null на будь-яку сміттєву адресу.
-function safeAbsoluteUrl(path) {
-  if (!path) return null;
-  try {
-    return new URL(path, process.env.NEXT_PUBLIC_SITE_URL).toString();
-  } catch {
-    return null;
-  }
-}
+// Перевіряє схему й хост, а не лише "чи парситься": коли робота не
+// знайшлась і адреса береться з тіла запиту, у листі власникові інакше
+// опинявся б клікабельний javascript:/data:/чужий домен (аудит, F-05).
+import { safeAbsoluteUrl } from "@/lib/safeUrl";
 
 const STATUSES = { available: "в наявності", sold: "продано", collection: "у приватній колекції" };
 

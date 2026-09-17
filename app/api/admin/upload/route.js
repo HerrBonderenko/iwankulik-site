@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { saveImage } from "@/lib/store";
-import { getSession } from "@/lib/adminAuth";
+import { getSession, isSameOrigin } from "@/lib/adminAuth";
 import { getClientIp } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
 
@@ -35,9 +35,20 @@ function detectImageType(buffer) {
 }
 
 export async function POST(request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ ok: false }, { status: 403 });
+
   const session = await getSession();
   if (!session.login) {
     return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
+  // Розмір перевіряємо ДО request.formData(): той буферизує все тіло в
+  // пам'ять функції, і перевірка file.size нижче спрацювала б уже після
+  // цього (аудит, F-07). Запас 64 КБ — на multipart-обгортку навколо
+  // самого файлу; без заголовка (chunked) пропускаємо до file.size.
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_BYTES + 64 * 1024) {
+    return NextResponse.json({ ok: false, error: "файл завеликий (макс. 15 МБ)" }, { status: 413 });
   }
 
   const form = await request.formData();

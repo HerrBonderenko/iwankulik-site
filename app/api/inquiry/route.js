@@ -86,6 +86,8 @@ export async function POST(request) {
   const contacts = [data.phone, data.email].filter(Boolean).join(", ");
 
   if (mailResult.ok !== true) {
+    // Контакти тут доречні: лист НЕ пішов, і цей запис — єдиний слід
+    // заявки, за яким Іван ще може відповісти людині.
     await logEvent({
       action: "mail_failed",
       user: data.email || null,
@@ -96,12 +98,15 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "mail_failed" }, { status: 502 });
   }
 
+  // Телефон і email у detail не пишемо: лист дійшов, контакти вже в
+  // ньому, а журнал зберігає лише факт заявки — персональні дані не
+  // мають осідати у сховищі назавжди (аудит, F-04).
   await logEvent({
     action: "inquiry",
     user: data.email || null,
     ip,
     ua,
-    detail: `заявка від ${data.name}${contacts ? ` (${contacts})` : ""}`,
+    detail: `заявка від ${data.name}`,
   });
 
   return NextResponse.json({ ok: true });

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { verifyCredentials, getSession } from "@/lib/adminAuth";
+import { verifyCredentials, getSession, isSameOrigin } from "@/lib/adminAuth";
 import { getClientIp, checkBlocked, recordFailure, recordSuccess, getBlockInfo, MAX_ATTEMPTS } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
 import { checkAndRememberDevice } from "@/lib/deviceTracking";
 import { sendMail, escapeHtml } from "@/lib/mail";
+import { checkBodySize } from "@/lib/formGuard";
 
 const FAIL_DELAY_MS = 1000;
 
@@ -24,6 +25,15 @@ function formatDurationMs(ms) {
 }
 
 export async function POST(request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ ok: false }, { status: 403 });
+
+  // Точка публічна, а request.json() нижче буферизує тіло цілком —
+  // розмір перевіряємо до розбору, як і на формах заявок (аудит, F-07).
+  const oversized = checkBodySize(request);
+  if (oversized) {
+    return NextResponse.json(oversized.body, { status: oversized.status });
+  }
+
   const ip = getClientIp(request);
   const ua = request.headers.get("user-agent") || "";
 

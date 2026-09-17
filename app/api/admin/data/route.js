@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getData, putData } from "@/lib/store";
-import { getSession, isAuthed } from "@/lib/adminAuth";
+import { getSession, isAuthed, isSameOrigin } from "@/lib/adminAuth";
 import { getClientIp } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
 import { preserveCodes } from "@/lib/workCodes";
@@ -24,6 +24,8 @@ function removedItems(beforeList, afterList, idKey) {
 }
 
 export async function PUT(request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ ok: false }, { status: 403 });
+
   const session = await getSession();
   if (!session.login) return NextResponse.json({ ok: false }, { status: 401 });
 
