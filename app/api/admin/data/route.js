@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getData, putData } from "@/lib/store";
-import { getSession, isAuthed, isSameOrigin } from "@/lib/adminAuth";
+import { requireAdmin, isAuthed, isSameOrigin } from "@/lib/adminAuth";
 import { getClientIp } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
 import { preserveCodes } from "@/lib/workCodes";
@@ -26,8 +26,10 @@ function removedItems(beforeList, afterList, idKey) {
 export async function PUT(request) {
   if (!isSameOrigin(request)) return NextResponse.json({ ok: false }, { status: 403 });
 
-  const session = await getSession();
-  if (!session.login) return NextResponse.json({ ok: false }, { status: 401 });
+  // requireAdmin, а не session.login: інакше відкликана на виході
+  // сесія все одно писала б дані (R-01).
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ ok: false }, { status: 401 });
 
   const data = await request.json().catch(() => null);
 
@@ -40,7 +42,7 @@ export async function PUT(request) {
     // Саме тіло не пишемо — там увесь вміст сайту. Лише назва перевірки.
     await logEvent({
       action: "save_rejected",
-      user: session.login,
+      user: admin.login,
       ip: getClientIp(request),
       ua: request.headers.get("user-agent") || "",
       detail: `не пройшла перевірка: ${failed}`,
@@ -92,7 +94,7 @@ export async function PUT(request) {
     const message = String(err?.message || err);
     await logEvent({
       action: "save_failed",
-      user: session.login,
+      user: admin.login,
       ip: getClientIp(request),
       ua: request.headers.get("user-agent") || "",
       // Сам вміст не пишемо — там увесь сайт. Лише крок і помилка.
@@ -118,7 +120,7 @@ export async function PUT(request) {
 
   await logEvent({
     action: isDelete ? "delete" : "edit",
-    user: session.login,
+    user: admin.login,
     ip: getClientIp(request),
     ua: request.headers.get("user-agent") || "",
     detail: detailParts.join("; ") || null,

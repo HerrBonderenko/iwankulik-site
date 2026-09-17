@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { saveImage } from "@/lib/store";
-import { getSession, isSameOrigin } from "@/lib/adminAuth";
+import { requireAdmin, isSameOrigin } from "@/lib/adminAuth";
 import { getClientIp } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/auditLog";
 
@@ -37,8 +37,10 @@ function detectImageType(buffer) {
 export async function POST(request) {
   if (!isSameOrigin(request)) return NextResponse.json({ ok: false }, { status: 403 });
 
-  const session = await getSession();
-  if (!session.login) {
+  // requireAdmin, а не session.login — щоб відкликана сесія не могла
+  // завантажувати файли (R-01).
+  const admin = await requireAdmin();
+  if (!admin) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
@@ -98,7 +100,7 @@ export async function POST(request) {
 
   await logEvent({
     action: "upload",
-    user: session.login,
+    user: admin.login,
     ip: getClientIp(request),
     ua: request.headers.get("user-agent") || "",
     detail: url,
@@ -107,8 +109,8 @@ export async function POST(request) {
   return NextResponse.json({
     ok: true,
     url,
-    uploadedBy: session.login,
-    uploadedByName: session.name,
+    uploadedBy: admin.login,
+    uploadedByName: admin.name,
     uploadedAt,
   });
 }

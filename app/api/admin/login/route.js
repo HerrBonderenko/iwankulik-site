@@ -114,6 +114,9 @@ export async function POST(request) {
   session.destroy();
   session.login = user.login;
   session.name = user.name;
+  // Час видачі: за ним requireAdmin() відрізняє сесію, видану після
+  // останнього виходу, від тієї, що мала б бути відкликана (R-01).
+  session.issuedAt = Date.now();
   await session.save();
 
   await logEvent({ action: "login_ok", user: user.login, ip, ua, detail: null });

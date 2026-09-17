@@ -3,6 +3,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { getUploadedImage, IS_NETLIFY } from "@/lib/store";
+import { CONTENT_DIR } from "@/lib/contentDir";
 
 const TYPES = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
 
@@ -22,7 +23,7 @@ export async function GET(_req, { params }) {
         },
       });
     }
-    const full = path.join(process.cwd(), "content", "uploads", safe);
+    const full = path.join(CONTENT_DIR, "uploads", safe);
     const buf = await fs.readFile(full);
     return new Response(buf, {
       headers: {

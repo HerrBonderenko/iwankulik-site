@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/adminAuth";
+import { requireAdmin } from "@/lib/adminAuth";
 import { readLogs, listMonths, ACTIONS } from "@/lib/auditLog";
 
 export const dynamic = "force-dynamic";
@@ -36,8 +36,7 @@ function formatTs(iso) {
 }
 
 export default async function LogsPage({ searchParams }) {
-  const session = await getSession();
-  if (!session.login) redirect("/admin");
+  if (!(await requireAdmin())) redirect("/admin");
 
   const sp = (await searchParams) || {};
   const months = await listMonths();
