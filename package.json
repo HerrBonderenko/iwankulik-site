@@ -9,7 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@netlify/blobs": "^8.2.0",
+    "@netlify/blobs": "^11.1.0",
     "@vercel/blob": "^2.8.0",
     "bcryptjs": "^3.0.3",
     "github-slugger": "^2.0.0",
